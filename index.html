@@ -202,6 +202,11 @@ img,video{max-width:100%;display:block;}
   touch-action:manipulation;
 }
 .nav-contact:hover{color:var(--ink);}
+@media (max-width:460px){
+  .nav{gap:10px;padding:8px 12px;}
+  .nav-word{display:none;}
+  .nav-word + .nav-div{display:none;}
+}
 
 /* --- progress rail (desktop) --- */
 .rail{
@@ -209,7 +214,7 @@ img,video{max-width:100%;display:block;}
   right:28px;
   top:50%;
   transform:translateY(-50%);
-  z-index:40;
+  z-index:25; /* below cards, so a right-side card glasses over it */
   display:flex;
   flex-direction:column;
   align-items:flex-end;
@@ -220,6 +225,7 @@ img,video{max-width:100%;display:block;}
   font-size:.68rem;
   letter-spacing:.06em;
   color:var(--muted);
+  text-shadow:0 1px 6px rgba(5,7,9,.65); /* keeps labels legible over the white gallery */
   display:flex;
   align-items:center;
   gap:8px;
@@ -282,12 +288,16 @@ img,video{max-width:100%;display:block;}
   font-weight:250;
   letter-spacing:-.01em;
   line-height:1;
+  text-shadow:0 2px 28px rgba(5,8,10,.5),0 1px 3px rgba(5,8,10,.4);
 }
 .intro-sub{
   font-size:clamp(.95rem,1.6vw,1.15rem);
-  color:var(--muted);
+  color:var(--ink);
+  opacity:.82;
   max-width:32ch;
+  text-shadow:0 1px 18px rgba(5,8,10,.6),0 1px 2px rgba(5,8,10,.5);
 }
+.scroll-hint{text-shadow:0 1px 12px rgba(5,8,10,.7);}
 .scroll-hint{
   position:absolute;
   bottom:48px;
@@ -352,9 +362,9 @@ img,video{max-width:100%;display:block;}
   will-change:transform,opacity,filter;
 }
 .zone-card[data-zone="1"]{--accent:#7dd3fc;top:50%;left:6%;transform:translateY(-50%);}
-.zone-card[data-zone="2"]{--accent:#e8b45a;top:50%;right:6%;transform:translateY(-50%);}
+.zone-card[data-zone="2"]{--accent:#e8b45a;top:50%;right:max(6%,168px);transform:translateY(-50%);}
 .zone-card[data-zone="3"]{--accent:#c9d4e0;top:50%;left:6%;transform:translateY(-50%);}
-.zone-card[data-zone="4"]{--accent:#f59e6c;top:50%;right:6%;transform:translateY(-50%);}
+.zone-card[data-zone="4"]{--accent:#f59e6c;top:50%;right:max(6%,168px);transform:translateY(-50%);}
 .zone-card[data-zone="5"]{--accent:#e5484d;left:50%;bottom:10%;transform:translateX(-50%);}
 @media (max-width:820px){
   .zone-card,
@@ -538,6 +548,7 @@ img,video{max-width:100%;display:block;}
   min-height:220px;
   overflow-y:auto;
 }
+.contact-preseed[hidden]{display:none;}
 .contact-preseed{
   display:flex;
   align-items:center;
@@ -564,14 +575,19 @@ img,video{max-width:100%;display:block;}
   position:absolute;
   inset:0;
   opacity:0;
+  visibility:hidden;
   transform:translateX(24px);
-  transition:opacity .24s var(--ease),transform .24s var(--ease);
+  /* visibility flips after the fade so leaving steps stay visible, and
+     hidden steps drop out of the tab order entirely */
+  transition:opacity .24s var(--ease),transform .24s var(--ease),visibility 0s linear .26s;
   pointer-events:none;
 }
 .step.is-active{
   position:relative;
   opacity:1;
+  visibility:visible;
   transform:translateX(0);
+  transition:opacity .24s var(--ease),transform .24s var(--ease),visibility 0s;
   pointer-events:auto;
 }
 .step.is-leaving-left{opacity:0;transform:translateX(-24px);}
@@ -784,7 +800,7 @@ textarea:focus-visible{
       <button type="button" class="nav-contact" id="navContact">Contact</button>
     </nav>
 
-    <div class="rail" id="rail" aria-hidden="true">
+    <div class="rail" id="rail" role="group" aria-label="Section progress">
       <button type="button" class="rail-item" data-zone-jump="1">01 IDE</button>
       <button type="button" class="rail-item" data-zone-jump="2">02 SOUND</button>
       <button type="button" class="rail-item" data-zone-jump="3">03 DIMENSION</button>
@@ -805,76 +821,76 @@ textarea:focus-visible{
     <p class="outro-caption" id="outroCaption" aria-hidden="true">↻ back where we started</p>
 
     <section class="zone-card glass" data-zone="1" aria-label="Zone 1: software development" aria-hidden="true" id="zoneCard1">
-      <div class="zone-card-inner" id="zoneCardInner1">
+      <div class="zone-card-inner">
         <p class="zone-index">01 / 05</p>
         <p class="zone-kicker">Software development</p>
         <h2 class="zone-title">Sprizzle IDE</h2>
         <p class="zone-copy">A code editor built for flow — holographic diffing, inline profiling, a command palette that reads intent, not just keystrokes. Open-source, extension-first.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
-          <a class="btn btn-primary glass" href="#" data-oss="sprizzle-ide">Explore Sprizzle IDE ↗</a>
+          <a class="btn btn-primary glass" href="#todo-sprizzle-ide" data-oss="sprizzle-ide">Explore Sprizzle IDE ↗</a>
           <button type="button" class="btn btn-ghost" data-open-contact data-service="software">Book this service</button>
         </div>
       </div>
     </section>
 
     <section class="zone-card glass" data-zone="2" aria-label="Zone 2: audio production" aria-hidden="true" id="zoneCard2">
-      <div class="zone-card-inner" id="zoneCardInner2">
+      <div class="zone-card-inner">
         <p class="zone-index">02 / 05</p>
         <p class="zone-kicker">Audio production</p>
         <h2 class="zone-title">Sprizzle VSTs</h2>
         <p class="zone-copy">Mixing, sound design, and DSP work, one plugin at a time — saturation, transient shaping, spectral repair. Tools we run on paid sessions, released back to the commons.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
-          <a class="btn btn-primary glass" href="#" data-oss="sprizzle-vsts">Explore Sprizzle VSTs ↗</a>
+          <a class="btn btn-primary glass" href="#todo-sprizzle-vsts" data-oss="sprizzle-vsts">Explore Sprizzle VSTs ↗</a>
           <button type="button" class="btn btn-ghost" data-open-contact data-service="audio">Book this service</button>
         </div>
       </div>
     </section>
 
     <section class="zone-card glass" data-zone="3" aria-label="Zone 3: 3D design" aria-hidden="true" id="zoneCard3">
-      <div class="zone-card-inner" id="zoneCardInner3">
+      <div class="zone-card-inner">
         <p class="zone-index">03 / 05</p>
         <p class="zone-kicker">3D design</p>
         <h2 class="zone-title">Roxy.js</h2>
         <p class="zone-copy">A lightweight scene toolkit for the web — procedural geometry, physically-based materials, a renderer that doesn't fight your git diff. No engine to license, no black box.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
-          <a class="btn btn-primary glass" href="#" data-oss="roxy-js">Explore Roxy.js ↗</a>
+          <a class="btn btn-primary glass" href="#todo-roxy-js" data-oss="roxy-js">Explore Roxy.js ↗</a>
           <button type="button" class="btn btn-ghost" data-open-contact data-service="3d">Book this service</button>
         </div>
       </div>
     </section>
 
     <section class="zone-card glass" data-zone="4" aria-label="Zone 4: animation" aria-hidden="true" id="zoneCard4">
-      <div class="zone-card-inner" id="zoneCardInner4">
+      <div class="zone-card-inner">
         <p class="zone-index">04 / 05</p>
         <p class="zone-kicker">Animation</p>
         <h2 class="zone-title">PeachMint</h2>
         <p class="zone-copy">Motion work for brands and film — timing, weight, and the small imperfections that read as handmade. PeachMint is the rigging and interpolation library that survived the deadline.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
-          <a class="btn btn-primary glass" href="#" data-oss="peachmint">Explore PeachMint ↗</a>
+          <a class="btn btn-primary glass" href="#todo-peachmint" data-oss="peachmint">Explore PeachMint ↗</a>
           <button type="button" class="btn btn-ghost" data-open-contact data-service="animation">Book this service</button>
         </div>
       </div>
     </section>
 
     <section class="zone-card glass" data-zone="5" aria-label="Zone 5: opsec and security consulting" aria-hidden="true" id="zoneCard5">
-      <div class="zone-card-inner" id="zoneCardInner5">
+      <div class="zone-card-inner">
         <p class="zone-index">05 / 05</p>
         <p class="zone-kicker">OpSec / security consulting</p>
         <h2 class="zone-title">FreakSploit</h2>
         <p class="zone-copy">Audits, hardening, and threat modeling for teams who'd rather hear it from us first. FreakSploit is the internal red-team toolkit we cleaned up enough to ship.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
-          <a class="btn btn-primary glass" href="#" data-oss="freaksploit">Explore FreakSploit ↗</a>
+          <a class="btn btn-primary glass" href="#todo-freaksploit" data-oss="freaksploit">Explore FreakSploit ↗</a>
           <button type="button" class="btn btn-ghost" data-open-contact data-service="opsec">Book this service</button>
         </div>
       </div>
     </section>
 
-    <div class="contact" id="contact" hidden role="dialog" aria-modal="true" aria-labelledby="contactQuestion">
+    <div class="contact" id="contact" hidden role="dialog" aria-modal="true" aria-label="Contact Sprizzle">
       <div class="contact-backdrop" id="contactBackdrop"></div>
       <div class="contact-panel glass glass--dialog" id="contactPanel">
         <button type="button" class="contact-close" id="contactClose" aria-label="Close contact form">×</button>
@@ -896,7 +912,7 @@ textarea:focus-visible{
               <button type="button" class="contact-preseed-edit" id="contactPreseedEdit">change</button>
             </div>
             <div id="step0Body">
-              <h2 class="step-question" id="contactQuestion">What should we make?</h2>
+              <h2 class="step-question">What should we make?</h2>
               <div class="chip-row" id="chipsService">
                 <button type="button" class="chip" data-value="Software">Software</button>
                 <button type="button" class="chip" data-value="Audio">Audio</button>
@@ -1019,6 +1035,7 @@ const liquidLensImg = document.getElementById('liquidLensImg');
 const reducedMotionMQ = matchMedia('(prefers-reduced-motion: reduce)');
 const hoverMQ = matchMedia('(hover: hover)');
 const portraitMQ = matchMedia('(orientation: portrait)');
+const compactMQ = matchMedia('(max-width: 820px)');
 const reduced = () => reducedMotionMQ.matches;
 
 /* ---------- scroll -> video time mapping ---------- */
@@ -1219,7 +1236,10 @@ let idleTimer = null;
 function resetIdleTimer() {
   clearTimeout(idleTimer);
   idleTimer = setTimeout(() => {
-    if (lastP < 0.01) scrollHint.classList.add('hint--corner');
+    if (lastP < 0.01) {
+      scrollHint.classList.add('hint--corner');
+      scrollHint.classList.remove('is-paused');
+    }
   }, 6000);
 }
 window.addEventListener('scroll', () => {
@@ -1293,6 +1313,8 @@ function updateZoneCards(p, dt) {
     card.style.opacity = String(eased);
     card.style.filter = `blur(${(1 - eased) * 6}px)`;
     card.classList.toggle('is-visible', eased > 0.02);
+    // visibility (not just opacity) so hidden cards drop out of the tab order
+    card.style.visibility = eased > 0.02 ? 'visible' : 'hidden';
     card.setAttribute('aria-hidden', eased < 0.05 ? 'true' : 'false');
     card.style.pointerEvents = eased > 0.5 ? 'auto' : 'none';
 
@@ -1301,7 +1323,9 @@ function updateZoneCards(p, dt) {
     st.curY += (st.tY - st.curY) * k;
     st.curR += (st.tR - st.curR) * k;
     const rise = (1 - eased) * 14;
-    const baseTransform = card.dataset.zone === '5' ? 'translateX(-50%)' : 'translateY(-50%)';
+    // compact layout positions cards with left/right/bottom and no centering
+    // transform — re-applying the desktop one would shove them off-screen
+    const baseTransform = compactMQ.matches ? '' : (card.dataset.zone === '5' ? 'translateX(-50%)' : 'translateY(-50%)');
     const inner = card.firstElementChild;
     card.style.transform = `${baseTransform} translateY(${rise}px)`;
     if (parallaxEnabled()) {
@@ -1318,7 +1342,7 @@ function checkLoopBack(p, cur, scrollY) {
   const now = performance.now();
   if (p >= 0.999 && cur >= 15.00 - 0.2 && now - lastLoopAt > 500) {
     lastLoopAt = now;
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    window.scrollTo(0, 0);
     cur = 0;
     lastScrollY = 0;
     hideAccum = 0;
@@ -1337,6 +1361,10 @@ function tick(ts) {
   const dt = Math.min(0.1, (ts - lastTime) / 1000);
   lastTime = ts;
 
+  // scroll is locked (and reads 0) while the contact dialog is open —
+  // freeze everything so the video doesn't rewind behind it
+  if (!contact.hidden) return;
+
   const scrollY = window.scrollY; // read once per frame
   const p = clamp01(scrollY / maxScroll);
   lastP = p;
@@ -1345,7 +1373,7 @@ function tick(ts) {
   const k = reduced() ? 0.5 : 1 - Math.pow(1 - 0.16, dt * 60);
   cur += (target - cur) * k;
 
-  if (video.readyState >= 2 && Math.abs(cur - video.currentTime) > 1 / 60) {
+  if (video.readyState >= 2 && !video.seeking && Math.abs(cur - video.currentTime) > 1 / 60) {
     video.currentTime = cur;
   }
 
@@ -1413,6 +1441,7 @@ function closeContact() {
   contact.classList.remove('is-open');
   document.documentElement.style.overflow = '';
   window.scrollTo(0, savedScrollY);
+  lastScrollY = savedScrollY; // don't read the restore as a downward fling
   document.removeEventListener('keydown', onContactKeydown);
   const delay = reduced() ? 0 : 260;
   setTimeout(() => { contact.hidden = true; }, delay);
@@ -1463,7 +1492,7 @@ function goToStep(index, instant) {
   });
   updateProgress();
   if (index === 6) renderReview();
-  const focusTarget = steps[index].querySelector('input, textarea, .chip, .btn-next');
+  const focusTarget = index === 6 ? reviewSend : steps[index].querySelector('input, textarea, .chip, .btn-next');
   if (focusTarget) setTimeout(() => focusTarget.focus(), instant ? 0 : 240);
 }
 function goNext() { if (stepIndex < 6) goToStep(stepIndex + 1); }
@@ -1544,6 +1573,14 @@ reviewCopy.addEventListener('click', async () => {
   const original = reviewCopy.textContent;
   reviewCopy.textContent = 'Copied';
   setTimeout(() => { reviewCopy.textContent = original; }, 1500);
+});
+
+// placeholder repo links: swallow the hash jump until real URLs are wired in.
+// This guard self-disables once an href no longer starts with "#".
+document.querySelectorAll('a[data-oss]').forEach(a => {
+  a.addEventListener('click', e => {
+    if (a.getAttribute('href').startsWith('#')) e.preventDefault();
+  });
 });
 
 navContact.addEventListener('click', () => openContact(null));
