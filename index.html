@@ -1,0 +1,1557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sprizzle — software · sound · dimension · motion · opsec</title>
+<meta name="description" content="Sprizzle is an independent studio for software, sound, and dimension — five open-source projects, one small practice.">
+<meta name="theme-color" content="#0a0c0e">
+<meta property="og:title" content="Sprizzle — software · sound · dimension · motion · opsec">
+<meta property="og:description" content="An independent studio for software, sound, and dimension — five open-source projects, one small practice.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='2' y='2' width='60' height='60' rx='14' fill='%230a0c0e'/%3E%3Crect x='3' y='3' width='58' height='58' rx='13' fill='none' stroke='%23ffffff' stroke-opacity='0.25'/%3E%3Ctext x='32' y='43' font-family='ui-monospace,Menlo,Consolas,monospace' font-size='30' font-weight='600' fill='%23e8b45a' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<style>
+/* --- tokens --- */
+:root{
+  --bg:#0a0c0e;
+  --ink:#eef2f4;
+  --muted:#9aa4ab;
+  --accent:#7dd3fc;
+  --hairline:rgba(255,255,255,.14);
+  --radius-card:20px;
+  --radius-btn:12px;
+  --radius-pill:999px;
+  --ease:cubic-bezier(.32,.72,0,1);
+  --spec-x:50%;
+  --font-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+}
+body[data-zone="1"]{--accent:#7dd3fc;}
+body[data-zone="2"]{--accent:#e8b45a;}
+body[data-zone="3"]{--accent:#c9d4e0;}
+body[data-zone="4"]{--accent:#f59e6c;}
+body[data-zone="5"]{--accent:#e5484d;}
+
+/* --- reset --- */
+*,*::before,*::after{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+html{background:var(--bg);}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-sans);
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+h1,h2,h3,p{margin:0;}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
+a{color:inherit;text-decoration:none;}
+input,textarea{font:inherit;color:inherit;background:none;border:0;}
+ul{margin:0;padding:0;list-style:none;}
+img,video{max-width:100%;display:block;}
+::selection{background:color-mix(in oklab,var(--accent) 40%,transparent);color:#fff;}
+
+/* --- layout & scroll track --- */
+.track{
+  position:relative;
+  height:1500vh;
+}
+@media (max-width:820px){
+  .track{height:1200vh;}
+}
+.stage{
+  position:fixed;
+  inset:0;
+  overflow:hidden;
+  isolation:isolate;
+}
+
+/* --- glass system (shared recipe: nav, cards, dialog, chips, rail) --- */
+.glass{
+  position:relative;
+  background:color-mix(in oklab,#0d1114 46%,transparent);
+  -webkit-backdrop-filter:blur(18px) saturate(1.7) brightness(1.08);
+  backdrop-filter:blur(18px) saturate(1.7) brightness(1.08);
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.06);
+}
+@supports (backdrop-filter:url(#liquid-lens)){
+  .glass{
+    backdrop-filter:url(#liquid-lens) blur(14px) saturate(1.7) brightness(1.08);
+  }
+}
+.glass::before{
+  /* specular streak, follows pointer via --spec-x (desktop only) */
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.10) 45%,transparent 54%);
+  background-position:var(--spec-x) 0;
+  background-size:220% 100%;
+  pointer-events:none;
+  mix-blend-mode:screen;
+}
+.glass::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  opacity:.04;
+  mix-blend-mode:overlay;
+  pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.glass--nav{background:color-mix(in oklab,#12181c 38%,transparent);}
+.glass--dialog{background:color-mix(in oklab,#05070a 60%,transparent);}
+
+/* --- boot veil --- */
+.boot-veil{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#0a0c0e;
+  transition:opacity .5s ease;
+}
+.boot-veil-word{
+  font-size:1.4rem;
+  font-weight:500;
+  letter-spacing:.14em;
+  color:var(--ink);
+  opacity:.9;
+}
+.boot-veil--hidden{
+  opacity:0;
+  pointer-events:none;
+}
+
+/* --- video --- */
+.bg-video{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  will-change:contents;
+  background:#0a0c0e;
+}
+
+/* --- nav (auto-hiding glass pill) --- */
+.nav{
+  position:fixed;
+  top:18px;
+  left:50%;
+  z-index:60;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:10px 18px;
+  border-radius:var(--radius-pill);
+  transform:translateX(-50%) translateY(0);
+  transition:transform .42s var(--ease),opacity .42s var(--ease),filter .42s var(--ease);
+  will-change:transform;
+}
+.nav--hidden{
+  transform:translateX(-50%) translateY(-140%);
+  opacity:.4;
+  filter:blur(2px);
+}
+.nav-word{
+  font-size:.78rem;
+  font-weight:600;
+  letter-spacing:.18em;
+  white-space:nowrap;
+}
+.nav-div{
+  width:1px;
+  height:16px;
+  background:var(--hairline);
+}
+.nav-dots{
+  display:flex;
+  gap:6px;
+}
+.nav-dot{
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  border:1px solid var(--hairline);
+  font-family:var(--font-mono);
+  font-size:.68rem;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--muted);
+  transition:border-color .2s,color .2s,background-color .2s;
+  touch-action:manipulation;
+}
+.nav-dot.is-active{
+  color:#0a0c0e;
+  background:var(--accent);
+  border-color:var(--accent);
+}
+.nav-contact{
+  font-size:.82rem;
+  color:var(--muted);
+  white-space:nowrap;
+  touch-action:manipulation;
+}
+.nav-contact:hover{color:var(--ink);}
+
+/* --- progress rail (desktop) --- */
+.rail{
+  position:fixed;
+  right:28px;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:40;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:14px;
+}
+.rail-item{
+  font-family:var(--font-mono);
+  font-size:.68rem;
+  letter-spacing:.06em;
+  color:var(--muted);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  touch-action:manipulation;
+  transition:color .25s;
+}
+.rail-item::after{
+  content:"";
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--hairline);
+  transition:background-color .25s,box-shadow .25s;
+}
+.rail-item.is-active{color:var(--ink);}
+.rail-item.is-active::after{
+  background:var(--accent);
+  box-shadow:0 0 8px color-mix(in oklab,var(--accent) 70%,transparent);
+}
+@media (max-width:820px){
+  .rail{display:none;}
+}
+
+/* --- progress rail (mobile hairline) --- */
+.rail-mobile{
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  height:2px;
+  background:rgba(255,255,255,.08);
+  z-index:59;
+  display:none;
+}
+.rail-mobile-fill{
+  height:100%;
+  width:0%;
+  background:var(--accent);
+}
+@media (max-width:820px){
+  .rail-mobile{display:block;}
+}
+
+/* --- intro --- */
+.intro{
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  gap:18px;
+  padding:0 24px;
+  z-index:20;
+  will-change:opacity,filter,transform;
+}
+.intro-word{
+  font-size:clamp(3rem,9vw,7rem);
+  font-weight:250;
+  letter-spacing:-.01em;
+  line-height:1;
+}
+.intro-sub{
+  font-size:clamp(.95rem,1.6vw,1.15rem);
+  color:var(--muted);
+  max-width:32ch;
+}
+.scroll-hint{
+  position:absolute;
+  bottom:48px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  font-family:var(--font-mono);
+  font-size:.68rem;
+  letter-spacing:.24em;
+  color:var(--muted);
+  transition:opacity .3s,transform .3s;
+}
+.scroll-hint-line{
+  width:1px;
+  height:26px;
+  background:linear-gradient(to bottom,var(--muted),transparent);
+  animation:scroll-pulse 1.8s ease-in-out infinite;
+}
+@keyframes scroll-pulse{
+  0%{transform:translateY(-4px);opacity:.2;}
+  50%{transform:translateY(6px);opacity:1;}
+  100%{transform:translateY(14px);opacity:0;}
+}
+.scroll-hint.is-paused .scroll-hint-line{animation-play-state:paused;opacity:0;}
+.scroll-hint.hint--corner{
+  bottom:20px;
+  left:20px;
+  transform:none;
+  font-size:.6rem;
+  gap:6px;
+}
+.scroll-hint.hint--corner .scroll-hint-line{height:16px;}
+
+/* --- outro caption --- */
+.outro-caption{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  font-family:var(--font-mono);
+  font-size:.78rem;
+  letter-spacing:.1em;
+  color:var(--muted);
+  opacity:0;
+  z-index:22;
+  pointer-events:none;
+  transition:opacity .4s ease;
+}
+
+/* --- zone cards --- */
+.zone-card{
+  position:fixed;
+  z-index:30;
+  max-width:420px;
+  padding:28px 26px;
+  border-radius:var(--radius-card);
+  pointer-events:none;
+  opacity:0;
+  will-change:transform,opacity,filter;
+}
+.zone-card[data-zone="1"]{--accent:#7dd3fc;top:50%;left:6%;transform:translateY(-50%);}
+.zone-card[data-zone="2"]{--accent:#e8b45a;top:50%;right:6%;transform:translateY(-50%);}
+.zone-card[data-zone="3"]{--accent:#c9d4e0;top:50%;left:6%;transform:translateY(-50%);}
+.zone-card[data-zone="4"]{--accent:#f59e6c;top:50%;right:6%;transform:translateY(-50%);}
+.zone-card[data-zone="5"]{--accent:#e5484d;left:50%;bottom:10%;transform:translateX(-50%);}
+@media (max-width:820px){
+  .zone-card,
+  .zone-card[data-zone="1"],
+  .zone-card[data-zone="2"],
+  .zone-card[data-zone="3"],
+  .zone-card[data-zone="4"],
+  .zone-card[data-zone="5"]{
+    left:16px;
+    right:16px;
+    top:auto;
+    bottom:calc(16px + env(safe-area-inset-bottom));
+    max-width:none;
+    transform:none;
+  }
+}
+.zone-index{
+  font-family:var(--font-mono);
+  font-size:.72rem;
+  letter-spacing:.08em;
+  color:var(--accent);
+  margin-bottom:10px;
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity .32s var(--ease),transform .32s var(--ease);
+}
+.zone-kicker{
+  font-family:var(--font-mono);
+  font-size:.68rem;
+  font-weight:500;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:8px;
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity .32s var(--ease),transform .32s var(--ease);
+}
+.zone-title{
+  font-size:clamp(1.6rem,3vw,2.2rem);
+  font-weight:400;
+  letter-spacing:-.01em;
+  margin-bottom:12px;
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity .32s var(--ease),transform .32s var(--ease);
+}
+.zone-copy{
+  font-size:.95rem;
+  color:var(--muted);
+  margin-bottom:20px;
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity .32s var(--ease),transform .32s var(--ease);
+}
+.zone-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity .32s var(--ease),transform .32s var(--ease);
+}
+.zone-card.is-visible .zone-index{transition-delay:0ms;opacity:1;transform:none;}
+.zone-card.is-visible .zone-kicker{transition-delay:40ms;opacity:1;transform:none;}
+.zone-card.is-visible .zone-title{transition-delay:55ms;opacity:1;transform:none;}
+.zone-card.is-visible .zone-copy{transition-delay:70ms;opacity:1;transform:none;}
+.zone-card.is-visible .zone-actions{transition-delay:80ms;opacity:1;transform:none;}
+.zone-card:not(.is-visible) .zone-index,
+.zone-card:not(.is-visible) .zone-kicker,
+.zone-card:not(.is-visible) .zone-title,
+.zone-card:not(.is-visible) .zone-copy,
+.zone-card:not(.is-visible) .zone-actions{
+  transition-delay:0ms;
+}
+
+/* --- buttons --- */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:11px 18px;
+  border-radius:var(--radius-btn);
+  font-size:.85rem;
+  font-weight:500;
+  touch-action:manipulation;
+  transition:transform .12s var(--ease),box-shadow .2s,filter .2s;
+}
+.btn:active{transform:scale(.97);}
+.btn-primary{
+  color:var(--ink);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab,var(--accent) 55%,transparent),
+    0 4px 24px color-mix(in oklab,var(--accent) 18%,transparent),
+    inset 0 1px 0 rgba(255,255,255,.22),
+    inset 0 -1px 0 rgba(255,255,255,.06);
+}
+.btn-ghost{
+  color:var(--muted);
+  border:1px solid var(--hairline);
+}
+@media (hover:hover){
+  .btn-primary:hover{filter:brightness(1.12);transform:translateY(-1px);}
+  .btn-ghost:hover{color:var(--ink);border-color:rgba(255,255,255,.28);transform:translateY(-1px);}
+}
+
+/* --- contact dialog --- */
+.contact{
+  position:fixed;
+  inset:0;
+  z-index:200;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+.contact[hidden]{display:none;}
+.contact-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(4,6,8,.6);
+  opacity:0;
+  transition:opacity .26s ease;
+}
+.contact-panel{
+  position:relative;
+  width:100%;
+  max-width:480px;
+  max-height:min(640px,88vh);
+  border-radius:var(--radius-card);
+  padding:26px 26px 22px;
+  display:flex;
+  flex-direction:column;
+  transform:scale(.98);
+  opacity:0;
+  transition:transform .26s var(--ease),opacity .26s var(--ease);
+}
+.contact.is-open .contact-backdrop{opacity:1;}
+.contact.is-open .contact-panel{transform:scale(1);opacity:1;}
+.contact-progress{
+  display:flex;
+  gap:5px;
+  margin-bottom:20px;
+}
+.contact-progress-seg{
+  flex:1;
+  height:2px;
+  background:var(--hairline);
+  border-radius:2px;
+  overflow:hidden;
+}
+.contact-progress-seg::after{
+  content:"";
+  display:block;
+  height:100%;
+  width:0%;
+  background:var(--accent, #7dd3fc);
+  transition:width .3s var(--ease);
+}
+.contact-progress-seg.is-done::after,
+.contact-progress-seg.is-active::after{width:100%;}
+.contact-close{
+  position:absolute;
+  top:16px;
+  right:16px;
+  width:30px;
+  height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--muted);
+  font-size:1.2rem;
+  line-height:1;
+  border-radius:50%;
+  touch-action:manipulation;
+}
+.contact-close:hover{color:var(--ink);}
+.contact-steps{
+  position:relative;
+  flex:1;
+  min-height:220px;
+  overflow-y:auto;
+}
+.contact-preseed{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:18px;
+  font-size:.85rem;
+  color:var(--muted);
+}
+.contact-preseed-value{
+  color:var(--ink);
+  font-weight:500;
+}
+.contact-preseed-edit{
+  font-family:var(--font-mono);
+  font-size:.68rem;
+  letter-spacing:.06em;
+  color:var(--muted);
+  border:1px solid var(--hairline);
+  border-radius:var(--radius-pill);
+  padding:3px 10px;
+  touch-action:manipulation;
+}
+.step{
+  position:absolute;
+  inset:0;
+  opacity:0;
+  transform:translateX(24px);
+  transition:opacity .24s var(--ease),transform .24s var(--ease);
+  pointer-events:none;
+}
+.step.is-active{
+  position:relative;
+  opacity:1;
+  transform:translateX(0);
+  pointer-events:auto;
+}
+.step.is-leaving-left{opacity:0;transform:translateX(-24px);}
+.step.is-leaving-right{opacity:0;transform:translateX(24px);}
+.step.is-entering-left{transform:translateX(-24px);}
+.step-question{
+  font-size:1.25rem;
+  font-weight:400;
+  margin-bottom:18px;
+}
+.chip-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.chip{
+  padding:10px 16px;
+  border-radius:var(--radius-pill);
+  border:1px solid var(--hairline);
+  font-size:.85rem;
+  color:var(--ink);
+  touch-action:manipulation;
+  transition:border-color .18s,background-color .18s,transform .12s;
+}
+.chip:active{transform:scale(.97);}
+.chip.is-selected{
+  border-color:var(--accent, #7dd3fc);
+  background:color-mix(in oklab,var(--accent, #7dd3fc) 18%,transparent);
+}
+@media (hover:hover){
+  .chip:hover{border-color:rgba(255,255,255,.32);}
+}
+.field{
+  width:100%;
+  padding:12px 0;
+  border-bottom:1px solid var(--hairline);
+  font-size:1.05rem;
+  outline:none;
+}
+.field:focus{border-bottom-color:var(--accent, #7dd3fc);}
+textarea.field{
+  resize:vertical;
+  min-height:80px;
+  border-bottom:1px solid var(--hairline);
+}
+.field-error{
+  font-family:var(--font-mono);
+  font-size:.72rem;
+  color:#e5484d;
+  margin-top:8px;
+  min-height:1em;
+}
+.step-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:20px;
+}
+.step-actions--split{justify-content:space-between;}
+.btn-next{
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  border:1px solid var(--hairline);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  touch-action:manipulation;
+}
+.btn-back{
+  font-size:.82rem;
+  color:var(--muted);
+  touch-action:manipulation;
+}
+.btn-skip{
+  font-size:.82rem;
+  color:var(--muted);
+  border:1px solid var(--hairline);
+  border-radius:var(--radius-pill);
+  padding:8px 14px;
+  touch-action:manipulation;
+}
+.review-line{
+  display:flex;
+  gap:10px;
+  font-size:.88rem;
+  padding:8px 0;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.review-label{
+  font-family:var(--font-mono);
+  font-size:.66rem;
+  letter-spacing:.08em;
+  color:var(--muted);
+  min-width:64px;
+  padding-top:2px;
+}
+.review-value{flex:1;word-break:break-word;}
+.review-actions{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:18px;
+}
+.review-btn-row{display:flex;gap:10px;}
+.review-note{
+  font-family:var(--font-mono);
+  font-size:.68rem;
+  color:var(--muted);
+}
+
+/* --- noscript fallback --- */
+.noscript-fallback{
+  position:absolute;
+  inset:0;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+  padding:40px 24px;
+  text-align:center;
+  background:
+    radial-gradient(ellipse at 30% 20%,#151b1f 0%,transparent 60%),
+    radial-gradient(ellipse at 80% 80%,#1a1410 0%,transparent 60%),
+    var(--bg);
+}
+.noscript-word{font-size:clamp(2.2rem,7vw,4rem);font-weight:250;}
+.noscript-list{display:flex;flex-direction:column;gap:6px;font-family:var(--font-mono);font-size:.9rem;color:var(--muted);}
+.noscript-mail{font-size:.95rem;text-decoration:underline;text-underline-offset:4px;}
+
+/* --- focus & accessibility --- */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible{
+  outline:2px solid var(--accent, #7dd3fc);
+  outline-offset:2px;
+}
+.sr-only-svg{position:absolute;width:0;height:0;overflow:hidden;}
+
+/* --- reduced motion --- */
+@media (prefers-reduced-motion:reduce){
+  .scroll-hint-line{animation:none;opacity:.6;}
+  .step{transition:opacity .01s linear;transform:none !important;}
+  .zone-card,
+  .zone-index,.zone-kicker,.zone-title,.zone-copy,.zone-actions{transition:opacity .01s linear !important;transform:none !important;filter:none !important;}
+  .contact-panel,.contact-backdrop{transition:opacity .01s linear;transform:none !important;}
+  .btn-primary:hover,.btn-ghost:hover{transform:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- boot veil: solid cover, fades on first video frame or 4s timeout -->
+<div class="boot-veil" id="bootVeil" aria-hidden="true">
+  <span class="boot-veil-word">SPRIZZLE</span>
+</div>
+
+<noscript>
+  <div class="noscript-fallback">
+    <p class="noscript-word">Sprizzle</p>
+    <p>Independent studio for software, sound, and dimension.</p>
+    <ul class="noscript-list">
+      <li>Software development — Sprizzle IDE</li>
+      <li>Audio production — Sprizzle VSTs</li>
+      <li>3D design — Roxy.js</li>
+      <li>Animation — PeachMint</li>
+      <li>OpSec / security consulting — FreakSploit</li>
+    </ul>
+    <a class="noscript-mail" href="mailto:spryte@sprizzle.io">spryte@sprizzle.io</a>
+  </div>
+</noscript>
+
+<!-- liquid-lens refraction filter: Chromium enhancement over plain blur, filled by JS at boot -->
+<svg class="sr-only-svg" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="liquid-lens" x="-20%" y="-20%" width="140%" height="140%">
+      <feImage id="liquidLensImg" result="map" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none"/>
+      <feDisplacementMap in="SourceGraphic" in2="map" scale="60" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="track" id="track">
+  <div class="stage" id="stage">
+
+    <video
+      class="bg-video"
+      id="bgVideo"
+      muted
+      playsinline
+      preload="auto"
+      disablepictureinpicture
+      aria-hidden="true"
+      tabindex="-1"></video>
+
+    <nav class="nav glass glass--nav" id="nav" aria-label="Zone navigation">
+      <span class="nav-word">SPRIZZLE</span>
+      <span class="nav-div" aria-hidden="true"></span>
+      <div class="nav-dots" role="group" aria-label="Jump to zone">
+        <button type="button" class="nav-dot" data-zone-jump="1" aria-label="Zone 1: software development">1</button>
+        <button type="button" class="nav-dot" data-zone-jump="2" aria-label="Zone 2: audio production">2</button>
+        <button type="button" class="nav-dot" data-zone-jump="3" aria-label="Zone 3: 3D design">3</button>
+        <button type="button" class="nav-dot" data-zone-jump="4" aria-label="Zone 4: animation">4</button>
+        <button type="button" class="nav-dot" data-zone-jump="5" aria-label="Zone 5: opsec">5</button>
+      </div>
+      <span class="nav-div" aria-hidden="true"></span>
+      <button type="button" class="nav-contact" id="navContact">Contact</button>
+    </nav>
+
+    <div class="rail" id="rail" aria-hidden="true">
+      <button type="button" class="rail-item" data-zone-jump="1">01 IDE</button>
+      <button type="button" class="rail-item" data-zone-jump="2">02 SOUND</button>
+      <button type="button" class="rail-item" data-zone-jump="3">03 DIMENSION</button>
+      <button type="button" class="rail-item" data-zone-jump="4">04 MOTION</button>
+      <button type="button" class="rail-item" data-zone-jump="5">05 OPSEC</button>
+    </div>
+    <div class="rail-mobile" id="railMobile" aria-hidden="true"><div class="rail-mobile-fill" id="railMobileFill"></div></div>
+
+    <section class="intro" id="intro">
+      <h1 class="intro-word">Sprizzle</h1>
+      <p class="intro-sub">Independent studio for software, sound, and dimension.</p>
+      <div class="scroll-hint" id="scrollHint" aria-hidden="true">
+        <span class="scroll-hint-label">Scroll</span>
+        <span class="scroll-hint-line"></span>
+      </div>
+    </section>
+
+    <p class="outro-caption" id="outroCaption" aria-hidden="true">↻ back where we started</p>
+
+    <section class="zone-card glass" data-zone="1" aria-label="Zone 1: software development" aria-hidden="true" id="zoneCard1">
+      <div class="zone-card-inner" id="zoneCardInner1">
+        <p class="zone-index">01 / 05</p>
+        <p class="zone-kicker">Software development</p>
+        <h2 class="zone-title">Sprizzle IDE</h2>
+        <p class="zone-copy">A code editor built for flow — holographic diffing, inline profiling, a command palette that reads intent, not just keystrokes. Open-source, extension-first.</p>
+        <div class="zone-actions">
+          <!-- TODO(spryte): wire real repo URL -->
+          <a class="btn btn-primary glass" href="#" data-oss="sprizzle-ide">Explore Sprizzle IDE ↗</a>
+          <button type="button" class="btn btn-ghost" data-open-contact data-service="software">Book this service</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="zone-card glass" data-zone="2" aria-label="Zone 2: audio production" aria-hidden="true" id="zoneCard2">
+      <div class="zone-card-inner" id="zoneCardInner2">
+        <p class="zone-index">02 / 05</p>
+        <p class="zone-kicker">Audio production</p>
+        <h2 class="zone-title">Sprizzle VSTs</h2>
+        <p class="zone-copy">Mixing, sound design, and DSP work, one plugin at a time — saturation, transient shaping, spectral repair. Tools we run on paid sessions, released back to the commons.</p>
+        <div class="zone-actions">
+          <!-- TODO(spryte): wire real repo URL -->
+          <a class="btn btn-primary glass" href="#" data-oss="sprizzle-vsts">Explore Sprizzle VSTs ↗</a>
+          <button type="button" class="btn btn-ghost" data-open-contact data-service="audio">Book this service</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="zone-card glass" data-zone="3" aria-label="Zone 3: 3D design" aria-hidden="true" id="zoneCard3">
+      <div class="zone-card-inner" id="zoneCardInner3">
+        <p class="zone-index">03 / 05</p>
+        <p class="zone-kicker">3D design</p>
+        <h2 class="zone-title">Roxy.js</h2>
+        <p class="zone-copy">A lightweight scene toolkit for the web — procedural geometry, physically-based materials, a renderer that doesn't fight your git diff. No engine to license, no black box.</p>
+        <div class="zone-actions">
+          <!-- TODO(spryte): wire real repo URL -->
+          <a class="btn btn-primary glass" href="#" data-oss="roxy-js">Explore Roxy.js ↗</a>
+          <button type="button" class="btn btn-ghost" data-open-contact data-service="3d">Book this service</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="zone-card glass" data-zone="4" aria-label="Zone 4: animation" aria-hidden="true" id="zoneCard4">
+      <div class="zone-card-inner" id="zoneCardInner4">
+        <p class="zone-index">04 / 05</p>
+        <p class="zone-kicker">Animation</p>
+        <h2 class="zone-title">PeachMint</h2>
+        <p class="zone-copy">Motion work for brands and film — timing, weight, and the small imperfections that read as handmade. PeachMint is the rigging and interpolation library that survived the deadline.</p>
+        <div class="zone-actions">
+          <!-- TODO(spryte): wire real repo URL -->
+          <a class="btn btn-primary glass" href="#" data-oss="peachmint">Explore PeachMint ↗</a>
+          <button type="button" class="btn btn-ghost" data-open-contact data-service="animation">Book this service</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="zone-card glass" data-zone="5" aria-label="Zone 5: opsec and security consulting" aria-hidden="true" id="zoneCard5">
+      <div class="zone-card-inner" id="zoneCardInner5">
+        <p class="zone-index">05 / 05</p>
+        <p class="zone-kicker">OpSec / security consulting</p>
+        <h2 class="zone-title">FreakSploit</h2>
+        <p class="zone-copy">Audits, hardening, and threat modeling for teams who'd rather hear it from us first. FreakSploit is the internal red-team toolkit we cleaned up enough to ship.</p>
+        <div class="zone-actions">
+          <!-- TODO(spryte): wire real repo URL -->
+          <a class="btn btn-primary glass" href="#" data-oss="freaksploit">Explore FreakSploit ↗</a>
+          <button type="button" class="btn btn-ghost" data-open-contact data-service="opsec">Book this service</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="contact" id="contact" hidden role="dialog" aria-modal="true" aria-labelledby="contactQuestion">
+      <div class="contact-backdrop" id="contactBackdrop"></div>
+      <div class="contact-panel glass glass--dialog" id="contactPanel">
+        <button type="button" class="contact-close" id="contactClose" aria-label="Close contact form">×</button>
+        <div class="contact-progress" id="contactProgress">
+          <span class="contact-progress-seg" data-seg="0"></span>
+          <span class="contact-progress-seg" data-seg="1"></span>
+          <span class="contact-progress-seg" data-seg="2"></span>
+          <span class="contact-progress-seg" data-seg="3"></span>
+          <span class="contact-progress-seg" data-seg="4"></span>
+          <span class="contact-progress-seg" data-seg="5"></span>
+          <span class="contact-progress-seg" data-seg="6"></span>
+        </div>
+        <div class="contact-steps" id="contactSteps">
+
+          <div class="step" data-step="0" id="step0">
+            <div class="contact-preseed" id="contactPreseed" hidden>
+              <span>Making:</span>
+              <span class="contact-preseed-value" id="contactPreseedValue"></span>
+              <button type="button" class="contact-preseed-edit" id="contactPreseedEdit">change</button>
+            </div>
+            <div id="step0Body">
+              <h2 class="step-question" id="contactQuestion">What should we make?</h2>
+              <div class="chip-row" id="chipsService">
+                <button type="button" class="chip" data-value="Software">Software</button>
+                <button type="button" class="chip" data-value="Audio">Audio</button>
+                <button type="button" class="chip" data-value="3D">3D</button>
+                <button type="button" class="chip" data-value="Animation">Animation</button>
+                <button type="button" class="chip" data-value="OpSec">OpSec</button>
+                <button type="button" class="chip" data-value="Something else">Something else</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="step" data-step="1">
+            <h2 class="step-question">What shape is it in?</h2>
+            <div class="chip-row" id="chipsShape">
+              <button type="button" class="chip" data-value="Just an idea">Just an idea</button>
+              <button type="button" class="chip" data-value="Specced &amp; ready">Specced &amp; ready</button>
+              <button type="button" class="chip" data-value="Existing thing that needs help">Existing thing that needs help</button>
+              <button type="button" class="chip" data-value="Ongoing retainer">Ongoing retainer</button>
+            </div>
+            <div class="step-actions">
+              <button type="button" class="btn-back" data-back>← back</button>
+            </div>
+          </div>
+
+          <div class="step" data-step="2">
+            <h2 class="step-question">Timeline?</h2>
+            <div class="chip-row" id="chipsTimeline">
+              <button type="button" class="chip" data-value="Yesterday">Yesterday</button>
+              <button type="button" class="chip" data-value="This month">This month</button>
+              <button type="button" class="chip" data-value="This quarter">This quarter</button>
+              <button type="button" class="chip" data-value="Flexible">Flexible</button>
+            </div>
+            <div class="step-actions">
+              <button type="button" class="btn-back" data-back>← back</button>
+            </div>
+          </div>
+
+          <div class="step" data-step="3">
+            <h2 class="step-question">Your name?</h2>
+            <input type="text" class="field" id="fieldName" autocomplete="name" placeholder="Full name">
+            <div class="step-actions step-actions--split">
+              <button type="button" class="btn-back" data-back>← back</button>
+              <button type="button" class="btn-next" data-next="3" aria-label="Continue">→</button>
+            </div>
+          </div>
+
+          <div class="step" data-step="4">
+            <h2 class="step-question">Where do I reply?</h2>
+            <input type="email" class="field" id="fieldEmail" autocomplete="email" placeholder="you@wherever.com">
+            <p class="field-error" id="emailError"></p>
+            <div class="step-actions step-actions--split">
+              <button type="button" class="btn-back" data-back>← back</button>
+              <button type="button" class="btn-next" data-next="4" aria-label="Continue">→</button>
+            </div>
+          </div>
+
+          <div class="step" data-step="5">
+            <h2 class="step-question">Anything else I should know?</h2>
+            <textarea class="field" id="fieldNotes" rows="3" placeholder="Optional"></textarea>
+            <div class="step-actions step-actions--split">
+              <button type="button" class="btn-back" data-back>← back</button>
+              <div style="display:flex;gap:10px;">
+                <button type="button" class="btn-skip" id="notesSkip">Skip</button>
+                <button type="button" class="btn-next" data-next="5" aria-label="Continue">→</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="step" data-step="6">
+            <h2 class="step-question">Review</h2>
+            <div class="review-line"><span class="review-label">WHAT</span><span class="review-value" id="reviewService"></span></div>
+            <div class="review-line"><span class="review-label">SHAPE</span><span class="review-value" id="reviewShape"></span></div>
+            <div class="review-line"><span class="review-label">TIMELINE</span><span class="review-value" id="reviewTimeline"></span></div>
+            <div class="review-line"><span class="review-label">NAME</span><span class="review-value" id="reviewName"></span></div>
+            <div class="review-line"><span class="review-label">EMAIL</span><span class="review-value" id="reviewEmail"></span></div>
+            <div class="review-line"><span class="review-label">NOTES</span><span class="review-value" id="reviewNotes"></span></div>
+            <div class="review-actions">
+              <div class="step-actions">
+                <button type="button" class="btn-back" data-back>← back</button>
+              </div>
+              <div class="review-btn-row">
+                <a class="btn btn-primary glass" id="reviewSend" href="#">Send it ↗</a>
+                <button type="button" class="btn btn-ghost" id="reviewCopy">Copy instead</button>
+              </div>
+              <p class="review-note">opens your mail app — nothing is sent from this page</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+/* ---------- dom refs ---------- */
+const bootVeil = document.getElementById('bootVeil');
+const video = document.getElementById('bgVideo');
+const track = document.getElementById('track');
+const nav = document.getElementById('nav');
+const navContact = document.getElementById('navContact');
+const rail = document.getElementById('rail');
+const railMobileFill = document.getElementById('railMobileFill');
+const intro = document.getElementById('intro');
+const scrollHint = document.getElementById('scrollHint');
+const outroCaption = document.getElementById('outroCaption');
+const contact = document.getElementById('contact');
+const contactBackdrop = document.getElementById('contactBackdrop');
+const contactPanel = document.getElementById('contactPanel');
+const contactClose = document.getElementById('contactClose');
+const contactSteps = document.getElementById('contactSteps');
+const contactPreseed = document.getElementById('contactPreseed');
+const contactPreseedValue = document.getElementById('contactPreseedValue');
+const contactPreseedEdit = document.getElementById('contactPreseedEdit');
+const step0Body = document.getElementById('step0Body');
+const zoneCards = [1,2,3,4,5].map(n => document.getElementById(`zoneCard${n}`));
+const liquidLensImg = document.getElementById('liquidLensImg');
+
+const reducedMotionMQ = matchMedia('(prefers-reduced-motion: reduce)');
+const hoverMQ = matchMedia('(hover: hover)');
+const portraitMQ = matchMedia('(orientation: portrait)');
+const reduced = () => reducedMotionMQ.matches;
+
+/* ---------- scroll -> video time mapping ---------- */
+// Eleven segments in order: intro, z1, t, z2, t, z3, t, z4, t, z5, outro.
+// SHARES are fractions of total scroll; TIME_RANGES are [start,end] seconds
+// into the source video for that segment, per source file.
+const SHARES = [0.06, 0.135, 0.045, 0.135, 0.045, 0.135, 0.045, 0.135, 0.045, 0.135, 0.085];
+const TIME_RANGES = {
+  desktop: [[0.00,0.30],[0.30,1.80],[1.80,2.70],[2.70,4.50],[4.50,5.20],[5.20,7.10],[7.10,7.70],[7.70,10.10],[10.10,10.90],[10.90,13.20],[13.20,15.00]],
+  mobile:  [[0.00,0.25],[0.25,1.10],[1.10,2.00],[2.00,4.00],[4.00,4.60],[4.60,6.30],[6.30,7.60],[7.60,10.00],[10.00,11.20],[11.20,14.00],[14.00,15.00]],
+};
+// Cumulative scroll breakpoints [0 .. 1], built once from SHARES.
+const BP = (() => {
+  const bp = [0];
+  for (const s of SHARES) bp.push(bp[bp.length - 1] + s);
+  bp[bp.length - 1] = 1; // guard fp drift
+  return bp;
+})();
+const ZONE_DWELL = [null, [BP[1],BP[2]], [BP[3],BP[4]], [BP[5],BP[6]], [BP[7],BP[8]], [BP[9],BP[10]]];
+const ZONE_SWITCH = [ (BP[2]+BP[3])/2, (BP[4]+BP[5])/2, (BP[6]+BP[7])/2, (BP[8]+BP[9])/2 ];
+
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const smoothstep = t => t * t * (3 - 2 * t);
+
+function timeFor(p, sourceKey) {
+  const ranges = TIME_RANGES[sourceKey];
+  for (let i = 0; i < SHARES.length; i++) {
+    if (p <= BP[i + 1] || i === SHARES.length - 1) {
+      const span = BP[i + 1] - BP[i];
+      const local = span > 0 ? (p - BP[i]) / span : 0;
+      const [a, b] = ranges[i];
+      return lerp(a, b, clamp01(local));
+    }
+  }
+  return ranges[ranges.length - 1][1];
+}
+
+function zoneForProgress(p) {
+  if (p < ZONE_SWITCH[0]) return 1;
+  if (p < ZONE_SWITCH[1]) return 2;
+  if (p < ZONE_SWITCH[2]) return 3;
+  if (p < ZONE_SWITCH[3]) return 4;
+  return 5;
+}
+
+/* ---------- video source selection ---------- */
+let activeSource = portraitMQ.matches ? 'mobile' : 'desktop';
+let maxScroll = 1;
+let lastP = 0;
+
+function srcFor(key) {
+  return key === 'mobile' ? 'assets/bg-mobile.mp4' : 'assets/bg-desktop.mp4';
+}
+function setVideoSource(key) {
+  activeSource = key;
+  video.src = srcFor(key);
+  video.load();
+  const restore = () => {
+    video.currentTime = timeFor(lastP, activeSource);
+    video.removeEventListener('loadedmetadata', restore);
+  };
+  video.addEventListener('loadedmetadata', restore);
+}
+portraitMQ.addEventListener('change', e => setVideoSource(e.matches ? 'mobile' : 'desktop'));
+setVideoSource(activeSource);
+
+function recalcMaxScroll() {
+  maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+}
+recalcMaxScroll();
+window.addEventListener('resize', recalcMaxScroll);
+
+/* ---------- boot veil ---------- */
+let veilHidden = false;
+function hideBootVeil() {
+  if (veilHidden) return;
+  veilHidden = true;
+  bootVeil.classList.add('boot-veil--hidden');
+}
+video.addEventListener('loadeddata', hideBootVeil, { once: true });
+setTimeout(hideBootVeil, 4000);
+
+/* ---------- iOS buffering nudge ---------- */
+let nudged = false;
+function nudge() {
+  if (nudged) return;
+  nudged = true;
+  video.play().then(() => video.pause()).catch(() => {});
+}
+window.addEventListener('touchstart', nudge, { once: true, passive: true });
+window.addEventListener('click', nudge, { once: true });
+window.addEventListener('wheel', nudge, { once: true, passive: true });
+
+/* ---------- liquid-lens displacement map ---------- */
+// Draws a 256x256 map: neutral gray at center, R/G channels ramp toward the
+// edges over the outer ~18% border so feDisplacementMap only bends light at
+// the rim of the glass, not across its whole face.
+(function buildLiquidLens() {
+  try {
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(size, size);
+    const border = 0.18;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const nx = x / size, ny = y / size;
+        const d = Math.min(nx, 1 - nx, ny, 1 - ny);
+        const t = d < border ? 1 - d / border : 0;
+        const dx = nx - 0.5, dy = ny - 0.5;
+        const len = Math.hypot(dx, dy) || 1;
+        const r = 128 - (dx / len) * t * 90;
+        const g = 128 - (dy / len) * t * 90;
+        const i = (y * size + x) * 4;
+        img.data[i] = r;
+        img.data[i + 1] = g;
+        img.data[i + 2] = 128;
+        img.data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    const url = canvas.toDataURL('image/png');
+    liquidLensImg.setAttribute('href', url);
+    liquidLensImg.setAttributeNS('http://www.w3.org/1999/xlink', 'href', url);
+  } catch (_) {
+    // Silently keep plain blur (Safari/Firefox path anyway via @supports gate).
+  }
+})();
+
+/* ---------- specular pointer tracking (desktop only, cheap) ---------- */
+if (hoverMQ.matches && !reduced()) {
+  let specPending = false;
+  window.addEventListener('pointermove', e => {
+    if (specPending) return;
+    specPending = true;
+    requestAnimationFrame(() => {
+      const pct = (e.clientX / window.innerWidth) * 100;
+      document.documentElement.style.setProperty('--spec-x', `${pct}%`);
+      specPending = false;
+    });
+  });
+}
+
+/* ---------- nav auto-hide ---------- */
+let lastScrollY = window.scrollY;
+let hideAccum = 0;
+let pointerNearTop = false;
+window.addEventListener('pointermove', e => { pointerNearTop = e.clientY < 80; });
+nav.addEventListener('focusin', () => nav.classList.remove('nav--hidden'));
+
+function updateNav(scrollY, p) {
+  const delta = scrollY - lastScrollY;
+  const navHasFocus = nav.contains(document.activeElement);
+  if (scrollY < 40 || pointerNearTop || navHasFocus) {
+    hideAccum = 0;
+    nav.classList.remove('nav--hidden');
+  } else if (delta < 0) {
+    hideAccum = 0;
+    nav.classList.remove('nav--hidden');
+  } else if (delta > 0 && p > 0.02) {
+    hideAccum += delta;
+    if (hideAccum > 24) nav.classList.add('nav--hidden');
+  }
+  lastScrollY = scrollY;
+}
+
+/* ---------- progress rail ---------- */
+const railItems = Array.from(rail.querySelectorAll('.rail-item'));
+function updateRail(p, zone) {
+  railItems.forEach((el, i) => el.classList.toggle('is-active', i + 1 === zone));
+  railMobileFill.style.width = `${p * 100}%`;
+}
+
+/* ---------- nav dots + zone jump ---------- */
+const navDots = Array.from(nav.querySelectorAll('.nav-dot'));
+function updateNavDots(zone) {
+  navDots.forEach((el, i) => el.classList.toggle('is-active', i + 1 === zone));
+}
+function jumpToZone(n) {
+  const [a, b] = ZONE_DWELL[n];
+  const targetP = (a + b) / 2;
+  window.scrollTo({ top: targetP * maxScroll, behavior: reduced() ? 'auto' : 'smooth' });
+}
+document.querySelectorAll('[data-zone-jump]').forEach(el => {
+  el.addEventListener('click', () => jumpToZone(Number(el.dataset.zoneJump)));
+});
+
+/* ---------- body[data-zone] tint ---------- */
+function updateBodyZone(zone) {
+  document.body.dataset.zone = String(zone);
+}
+
+/* ---------- intro ---------- */
+let firstScrollHappened = false;
+let idleTimer = null;
+function resetIdleTimer() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    if (lastP < 0.01) scrollHint.classList.add('hint--corner');
+  }, 6000);
+}
+window.addEventListener('scroll', () => {
+  if (!firstScrollHappened) {
+    firstScrollHappened = true;
+    scrollHint.classList.add('is-paused');
+  }
+  scrollHint.classList.remove('hint--corner');
+  resetIdleTimer();
+}, { passive: true });
+resetIdleTimer();
+
+function updateIntro(p) {
+  const introSpan = BP[1];
+  const local = clamp01(p / introSpan);
+  const eased = smoothstep(local);
+  intro.style.opacity = String(1 - eased);
+  intro.style.filter = `blur(${eased * 10}px)`;
+  intro.style.transform = `translateY(${-eased * 24}px)`;
+  intro.style.pointerEvents = local >= 1 ? 'none' : 'auto';
+  intro.setAttribute('aria-hidden', local >= 0.98 ? 'true' : 'false');
+}
+
+/* ---------- outro caption ---------- */
+function updateOutro(p) {
+  const [a, b] = [BP[10], BP[11]];
+  if (p < a || p > b) { outroCaption.style.opacity = '0'; return; }
+  const local = (p - a) / (b - a);
+  let o = 0;
+  if (local < 0.90) o = 0;
+  else if (local < 0.97) o = (local - 0.90) / 0.07;
+  else o = 1 - (local - 0.97) / 0.03;
+  outroCaption.style.opacity = String(clamp01(o));
+}
+
+/* ---------- zone cards (visibility + parallax) ---------- */
+const cardState = zoneCards.map(() => ({ curX: 0, curY: 0, curR: 0, tX: 0, tY: 0, tR: 0 }));
+const parallaxEnabled = () => hoverMQ.matches && !reduced();
+
+zoneCards.forEach((card, idx) => {
+  card.addEventListener('pointermove', e => {
+    if (!parallaxEnabled()) return;
+    const rect = card.getBoundingClientRect();
+    const nx = (e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2);
+    const ny = (e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2);
+    const st = cardState[idx];
+    st.tX = clamp01(Math.abs(nx)) * Math.sign(nx) * 6;
+    st.tY = clamp01(Math.abs(ny)) * Math.sign(ny) * 6;
+    st.tR = clamp01(Math.abs(nx)) * Math.sign(nx) * 0.6;
+  });
+  card.addEventListener('pointerleave', () => {
+    const st = cardState[idx];
+    st.tX = 0; st.tY = 0; st.tR = 0;
+  });
+});
+
+function updateZoneCards(p, dt) {
+  const k = reduced() ? 1 : 1 - Math.pow(1 - 0.2, dt * 60);
+  zoneCards.forEach((card, i) => {
+    const zone = i + 1;
+    const [a, b] = ZONE_DWELL[zone];
+    const span = b - a;
+    const edge = span * 0.07;
+    let t = 0;
+    if (p >= a && p <= b) {
+      if (p < a + edge) t = (p - a) / edge;
+      else if (p > b - edge) t = (b - p) / edge;
+      else t = 1;
+    }
+    const eased = smoothstep(clamp01(t));
+    card.style.opacity = String(eased);
+    card.style.filter = `blur(${(1 - eased) * 6}px)`;
+    card.classList.toggle('is-visible', eased > 0.02);
+    card.setAttribute('aria-hidden', eased < 0.05 ? 'true' : 'false');
+    card.style.pointerEvents = eased > 0.5 ? 'auto' : 'none';
+
+    const st = cardState[i];
+    st.curX += (st.tX - st.curX) * k;
+    st.curY += (st.tY - st.curY) * k;
+    st.curR += (st.tR - st.curR) * k;
+    const rise = (1 - eased) * 14;
+    const baseTransform = card.dataset.zone === '5' ? 'translateX(-50%)' : 'translateY(-50%)';
+    const inner = card.firstElementChild;
+    card.style.transform = `${baseTransform} translateY(${rise}px)`;
+    if (parallaxEnabled()) {
+      inner.style.transform = `translate(${st.curX}px, ${st.curY}px) rotate(${st.curR}deg)`;
+    } else {
+      inner.style.transform = '';
+    }
+  });
+}
+
+/* ---------- loop-back (seamless end -> start) ---------- */
+let lastLoopAt = 0;
+function checkLoopBack(p, cur, scrollY) {
+  const now = performance.now();
+  if (p >= 0.999 && cur >= 15.00 - 0.2 && now - lastLoopAt > 500) {
+    lastLoopAt = now;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    cur = 0;
+    lastScrollY = 0;
+    hideAccum = 0;
+  }
+  return cur;
+}
+
+/* ---------- scrub engine (rAF loop) ---------- */
+let cur = 0;
+let rafId = null;
+let lastTime = null;
+
+function tick(ts) {
+  rafId = requestAnimationFrame(tick);
+  if (lastTime === null) lastTime = ts;
+  const dt = Math.min(0.1, (ts - lastTime) / 1000);
+  lastTime = ts;
+
+  const scrollY = window.scrollY; // read once per frame
+  const p = clamp01(scrollY / maxScroll);
+  lastP = p;
+
+  const target = timeFor(p, activeSource);
+  const k = reduced() ? 0.5 : 1 - Math.pow(1 - 0.16, dt * 60);
+  cur += (target - cur) * k;
+
+  if (video.readyState >= 2 && Math.abs(cur - video.currentTime) > 1 / 60) {
+    video.currentTime = cur;
+  }
+
+  cur = checkLoopBack(p, cur, scrollY);
+
+  const zone = zoneForProgress(p);
+  updateBodyZone(zone);
+  updateNav(scrollY, p);
+  updateRail(p, zone);
+  updateNavDots(zone);
+  updateIntro(p);
+  updateOutro(p);
+  updateZoneCards(p, dt);
+}
+
+function startLoop() {
+  if (rafId !== null) return;
+  lastTime = null;
+  rafId = requestAnimationFrame(tick);
+}
+function stopLoop() {
+  if (rafId === null) return;
+  cancelAnimationFrame(rafId);
+  rafId = null;
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopLoop(); else startLoop();
+});
+startLoop();
+
+/* ---------- contact wizard ---------- */
+const SERVICE_KEYS = { software: 'Software', audio: 'Audio', '3d': '3D', animation: 'Animation', opsec: 'OpSec' };
+const steps = Array.from(contactSteps.querySelectorAll('.step'));
+const chipsService = document.getElementById('chipsService');
+const chipsShape = document.getElementById('chipsShape');
+const chipsTimeline = document.getElementById('chipsTimeline');
+const fieldName = document.getElementById('fieldName');
+const fieldEmail = document.getElementById('fieldEmail');
+const emailError = document.getElementById('emailError');
+const fieldNotes = document.getElementById('fieldNotes');
+const notesSkip = document.getElementById('notesSkip');
+const reviewSend = document.getElementById('reviewSend');
+const reviewCopy = document.getElementById('reviewCopy');
+const progressSegs = Array.from(contact.querySelectorAll('.contact-progress-seg'));
+
+const state = { service: null, shape: null, timeline: null, name: '', email: '', notes: '', preseeded: false };
+let stepIndex = 0;
+let savedScrollY = 0;
+let lastFocused = null;
+
+function openContact(service) {
+  lastFocused = document.activeElement;
+  state.service = service ? SERVICE_KEYS[service] : null;
+  state.preseeded = Boolean(service);
+  stepIndex = service ? 1 : 0;
+  syncPreseedUI();
+  savedScrollY = window.scrollY;
+  document.documentElement.style.overflow = 'hidden';
+  contact.hidden = false;
+  requestAnimationFrame(() => contact.classList.add('is-open'));
+  goToStep(stepIndex, true);
+  document.addEventListener('keydown', onContactKeydown);
+}
+function closeContact() {
+  contact.classList.remove('is-open');
+  document.documentElement.style.overflow = '';
+  window.scrollTo(0, savedScrollY);
+  document.removeEventListener('keydown', onContactKeydown);
+  const delay = reduced() ? 0 : 260;
+  setTimeout(() => { contact.hidden = true; }, delay);
+  if (lastFocused && lastFocused.focus) lastFocused.focus();
+}
+function syncPreseedUI() {
+  contactPreseed.hidden = !state.preseeded;
+  step0Body.hidden = state.preseeded;
+  if (state.preseeded) contactPreseedValue.textContent = state.service;
+}
+contactPreseedEdit.addEventListener('click', () => {
+  state.preseeded = false;
+  syncPreseedUI();
+  goToStep(0);
+});
+
+function onContactKeydown(e) {
+  if (e.key === 'Escape') { closeContact(); return; }
+  if (e.key === 'Tab') trapFocus(e);
+}
+function trapFocus(e) {
+  const focusable = contactPanel.querySelectorAll('button:not([hidden]):not([disabled]), a[href], input, textarea, [tabindex]:not([tabindex="-1"])');
+  const visible = Array.from(focusable).filter(el => el.offsetParent !== null);
+  if (!visible.length) return;
+  const first = visible[0], last = visible[visible.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
+
+function updateProgress() {
+  progressSegs.forEach((seg, i) => {
+    seg.classList.toggle('is-done', i < stepIndex);
+    seg.classList.toggle('is-active', i === stepIndex);
+  });
+}
+
+function goToStep(index, instant) {
+  const prevIndex = stepIndex;
+  stepIndex = index;
+  const dir = index >= prevIndex ? 'right' : 'left';
+  steps.forEach((el, i) => {
+    el.classList.remove('is-active', 'is-leaving-left', 'is-leaving-right');
+    if (i === index) {
+      el.classList.add('is-active');
+    } else if (i === prevIndex && !instant) {
+      el.classList.add(dir === 'right' ? 'is-leaving-left' : 'is-leaving-right');
+    }
+  });
+  updateProgress();
+  if (index === 6) renderReview();
+  const focusTarget = steps[index].querySelector('input, textarea, .chip, .btn-next');
+  if (focusTarget) setTimeout(() => focusTarget.focus(), instant ? 0 : 240);
+}
+function goNext() { if (stepIndex < 6) goToStep(stepIndex + 1); }
+function goBack() {
+  if (stepIndex === 1 && state.preseeded) { closeContact(); return; }
+  if (stepIndex > 0) goToStep(stepIndex - 1);
+}
+
+function wireChips(container, key) {
+  container.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      container.querySelectorAll('.chip').forEach(c => c.classList.remove('is-selected'));
+      chip.classList.add('is-selected');
+      state[key] = chip.dataset.value;
+      setTimeout(goNext, 180);
+    });
+  });
+}
+wireChips(chipsService, 'service');
+wireChips(chipsShape, 'shape');
+wireChips(chipsTimeline, 'timeline');
+
+fieldName.addEventListener('keydown', e => { if (e.key === 'Enter') { state.name = fieldName.value.trim(); goNext(); } });
+contactSteps.querySelector('[data-next="3"]').addEventListener('click', () => { state.name = fieldName.value.trim(); goNext(); });
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function tryAdvanceEmail() {
+  const val = fieldEmail.value.trim();
+  if (!EMAIL_RE.test(val)) { emailError.textContent = 'That doesn’t look like a full email address.'; return; }
+  emailError.textContent = '';
+  state.email = val;
+  goNext();
+}
+fieldEmail.addEventListener('input', () => { if (emailError.textContent) emailError.textContent = ''; });
+fieldEmail.addEventListener('keydown', e => { if (e.key === 'Enter') tryAdvanceEmail(); });
+contactSteps.querySelector('[data-next="4"]').addEventListener('click', tryAdvanceEmail);
+
+contactSteps.querySelector('[data-next="5"]').addEventListener('click', () => { state.notes = fieldNotes.value.trim(); goNext(); });
+notesSkip.addEventListener('click', () => { state.notes = ''; goNext(); });
+
+contactSteps.querySelectorAll('[data-back]').forEach(btn => btn.addEventListener('click', goBack));
+
+function buildPlainText() {
+  return [
+    `What: ${state.service || '—'}`,
+    `Shape: ${state.shape || '—'}`,
+    `Timeline: ${state.timeline || '—'}`,
+    `Name: ${state.name || '—'}`,
+    `Email: ${state.email || '—'}`,
+    `Notes: ${state.notes || '—'}`,
+  ].join('\n');
+}
+function renderReview() {
+  document.getElementById('reviewService').textContent = state.service || '—';
+  document.getElementById('reviewShape').textContent = state.shape || '—';
+  document.getElementById('reviewTimeline').textContent = state.timeline || '—';
+  document.getElementById('reviewName').textContent = state.name || '—';
+  document.getElementById('reviewEmail').textContent = state.email || '—';
+  document.getElementById('reviewNotes').textContent = state.notes || '—';
+  const subject = `[Sprizzle] ${state.service || 'Project'} — ${state.name || 'new lead'}`;
+  const body = buildPlainText();
+  reviewSend.href = `mailto:spryte@sprizzle.io?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+reviewCopy.addEventListener('click', async () => {
+  const text = buildPlainText();
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (_) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (_) {}
+    document.body.removeChild(ta);
+  }
+  const original = reviewCopy.textContent;
+  reviewCopy.textContent = 'Copied';
+  setTimeout(() => { reviewCopy.textContent = original; }, 1500);
+});
+
+navContact.addEventListener('click', () => openContact(null));
+document.querySelectorAll('[data-open-contact]').forEach(btn => {
+  btn.addEventListener('click', () => openContact(btn.dataset.service));
+});
+contactClose.addEventListener('click', closeContact);
+contactBackdrop.addEventListener('click', closeContact);
+</script>
+</body>
+</html>
