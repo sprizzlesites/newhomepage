@@ -9,7 +9,7 @@
 <meta property="og:title" content="Sprizzle — software · sound · dimension · motion · opsec">
 <meta property="og:description" content="An independent studio for software, sound, and dimension — five open-source projects, one small practice.">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='2' y='2' width='60' height='60' rx='14' fill='%230a0c0e'/%3E%3Crect x='3' y='3' width='58' height='58' rx='13' fill='none' stroke='%23ffffff' stroke-opacity='0.25'/%3E%3Ctext x='32' y='43' font-family='ui-monospace,Menlo,Consolas,monospace' font-size='30' font-weight='600' fill='%23e8b45a' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <style>
 /* --- tokens --- */
 :root{
@@ -162,10 +162,9 @@ img,video{max-width:100%;display:block;}
   filter:blur(2px);
 }
 .nav-word{
-  font-size:.78rem;
-  font-weight:600;
-  letter-spacing:.18em;
-  white-space:nowrap;
+  height:20px;
+  width:auto;
+  display:block;
 }
 .nav-div{
   width:1px;
@@ -284,11 +283,9 @@ img,video{max-width:100%;display:block;}
   will-change:opacity,filter,transform;
 }
 .intro-word{
-  font-size:clamp(3rem,9vw,7rem);
-  font-weight:250;
-  letter-spacing:-.01em;
-  line-height:1;
-  text-shadow:0 2px 28px rgba(5,8,10,.5),0 1px 3px rgba(5,8,10,.4);
+  width:clamp(280px,42vw,620px);
+  height:auto;
+  filter:drop-shadow(0 6px 30px rgba(5,8,10,.55));
 }
 .intro-sub{
   font-size:clamp(.95rem,1.6vw,1.15rem);
@@ -787,7 +784,7 @@ textarea:focus-visible{
       tabindex="-1"></video>
 
     <nav class="nav glass glass--nav" id="nav" aria-label="Zone navigation">
-      <span class="nav-word">SPRIZZLE</span>
+      <img class="nav-word" src="assets/sprizzle-logo.png" alt="Sprizzle">
       <span class="nav-div" aria-hidden="true"></span>
       <div class="nav-dots" role="group" aria-label="Jump to zone">
         <button type="button" class="nav-dot" data-zone-jump="1" aria-label="Zone 1: software development">1</button>
@@ -810,7 +807,7 @@ textarea:focus-visible{
     <div class="rail-mobile" id="railMobile" aria-hidden="true"><div class="rail-mobile-fill" id="railMobileFill"></div></div>
 
     <section class="intro" id="intro">
-      <h1 class="intro-word">Sprizzle</h1>
+      <h1><img class="intro-word" src="assets/sprizzle-logo.png" alt="Sprizzle"></h1>
       <p class="intro-sub">Independent studio for software, sound, and dimension.</p>
       <div class="scroll-hint" id="scrollHint" aria-hidden="true">
         <span class="scroll-hint-label">Scroll</span>
