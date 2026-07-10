@@ -727,6 +727,18 @@ textarea:focus-visible{
 }
 .sr-only-svg{position:absolute;width:0;height:0;overflow:hidden;}
 
+/* --- loop transition veil (soft dip at the end -> start reset) --- */
+.loop-veil{
+  position:fixed;
+  inset:0;
+  z-index:150;
+  background:var(--bg);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .24s ease;
+}
+.loop-veil.is-on{opacity:1;}
+
 /* --- reduced motion --- */
 @media (prefers-reduced-motion:reduce){
   .scroll-hint-line{animation:none;opacity:.6;}
@@ -744,6 +756,9 @@ textarea:focus-visible{
 <div class="boot-veil" id="bootVeil" aria-hidden="true">
   <span class="boot-veil-word">SPRIZZLE</span>
 </div>
+
+<!-- loop veil: brief dip that masks the end -> start reset -->
+<div class="loop-veil" id="loopVeil" aria-hidden="true"></div>
 
 <noscript>
   <div class="noscript-fallback">
@@ -1008,6 +1023,7 @@ textarea:focus-visible{
 <script type="module">
 /* ---------- dom refs ---------- */
 const bootVeil = document.getElementById('bootVeil');
+const loopVeil = document.getElementById('loopVeil');
 const video = document.getElementById('bgVideo');
 const track = document.getElementById('track');
 const nav = document.getElementById('nav');
@@ -1334,18 +1350,29 @@ function updateZoneCards(p, dt) {
   });
 }
 
-/* ---------- loop-back (seamless end -> start) ---------- */
-let lastLoopAt = 0;
-function checkLoopBack(p, cur, scrollY) {
-  const now = performance.now();
-  if (p >= 0.999 && cur >= 15.00 - 0.2 && now - lastLoopAt > 500) {
-    lastLoopAt = now;
-    window.scrollTo(0, 0);
-    cur = 0;
-    lastScrollY = 0;
-    hideAccum = 0;
+/* ---------- loop-back (end -> start) ---------- */
+// The footage isn't a true seamless loop (its last frame differs from its
+// first), so instead of a hard cut we dip through the page's own background for
+// a beat while we reset scroll + video to the top. It reads as an intentional
+// transition rather than a chop — and critically it only fires once the final
+// frame has actually been shown, so the ending always plays out in full.
+const END_FRAME = 24 * 15 - 1; // last frame of the 15s / 24fps footage (359)
+let looping = false;
+function checkLoopBack(p) {
+  if (looping) return;
+  if (p >= 0.999 && lastWrittenFrame >= END_FRAME) {
+    looping = true;
+    loopVeil.classList.add('is-on');
+    setTimeout(() => {                 // fully dipped — reset under cover
+      window.scrollTo(0, 0);
+      cur = 0;
+      lastWrittenFrame = -1;
+      lastScrollY = 0;
+      hideAccum = 0;
+      loopVeil.classList.remove('is-on');
+      setTimeout(() => { looping = false; }, 450); // re-arm after the fade back
+    }, 240);
   }
-  return cur;
 }
 
 /* ---------- scrub engine (rAF loop) ---------- */
@@ -1394,17 +1421,22 @@ function tick(ts) {
     cur += step;
   }
 
-  // One seek per distinct source frame: writing sub-frame deltas just makes the
-  // browser re-seek within the same displayed frame, which is what churned.
-  if (video.readyState >= 2 && !video.seeking) {
+  // One seek per distinct source frame. fastSeek (Firefox/Safari) is exact here
+  // because the footage is all-intra, and it's much cheaper than a precise seek;
+  // Chromium lacks it and falls back to currentTime. No `seeking` guard — the
+  // browser coalesces to the newest target, so we keep chasing the latest frame
+  // instead of stalling behind an in-flight seek (that stall dropped the scrub
+  // to a fraction of the source's 24fps).
+  if (video.readyState >= 2) {
     const frame = Math.round(cur * SRC_FPS);
     if (frame !== lastWrittenFrame) {
       lastWrittenFrame = frame;
-      video.currentTime = frame * FRAME;
+      const t = frame * FRAME;
+      if (video.fastSeek) video.fastSeek(t); else video.currentTime = t;
     }
   }
 
-  cur = checkLoopBack(p, cur, scrollY);
+  checkLoopBack(p);
 
   const zone = zoneForProgress(p);
   updateBodyZone(zone);
