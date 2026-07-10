@@ -788,15 +788,7 @@ textarea:focus-visible{
 <div class="track" id="track">
   <div class="stage" id="stage">
 
-    <video
-      class="bg-video"
-      id="bgVideo"
-      muted
-      playsinline
-      preload="auto"
-      disablepictureinpicture
-      aria-hidden="true"
-      tabindex="-1"></video>
+    <canvas class="bg-video" id="bgCanvas" aria-hidden="true"></canvas>
 
     <nav class="nav glass glass--nav" id="nav" aria-label="Zone navigation">
       <img class="nav-word" src="assets/sprizzle-logo.png" alt="Sprizzle">
@@ -1024,7 +1016,8 @@ textarea:focus-visible{
 /* ---------- dom refs ---------- */
 const bootVeil = document.getElementById('bootVeil');
 const loopVeil = document.getElementById('loopVeil');
-const video = document.getElementById('bgVideo');
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d', { alpha: false });
 const track = document.getElementById('track');
 const nav = document.getElementById('nav');
 const navContact = document.getElementById('navContact');
@@ -1095,27 +1088,68 @@ function zoneForProgress(p) {
   return 5;
 }
 
-/* ---------- video source selection ---------- */
+/* ---------- image-sequence source (full-res frames, no video decode) ---------- */
+// EXPERIMENT (test branch): instead of scrubbing a <video>, we preload the
+// footage as a full-res WebP frame sequence and blit the current frame to a
+// canvas. Drawing a decoded image is effectively free, so the scrub tracks the
+// scroll at the display's own rate instead of being capped by seek throughput.
+const SEQ = {
+  desktop: { dir: 'assets/seq-desktop', w: 1280, h: 720, n: 361 },
+  mobile:  { dir: 'assets/seq-mobile',  w: 720,  h: 1280, n: 361 },
+};
+const framePath = (dir, i) => `${dir}/f${String(i + 1).padStart(3, '0')}.webp`;
+
 let activeSource = portraitMQ.matches ? 'mobile' : 'desktop';
 let maxScroll = 1;
 let lastP = 0;
+let frames = [];        // Image handles for the active sequence
+let loadedFlags = [];   // per-frame decode-ready flag
+let drawnFrame = -1;
+let lastWrittenFrame = -1; // frame index the scrub loop last requested
 
-function srcFor(key) {
-  return key === 'mobile' ? 'assets/bg-mobile.mp4' : 'assets/bg-desktop.mp4';
-}
-function setVideoSource(key) {
+function loadSequence(key) {
   activeSource = key;
-  video.src = srcFor(key);
-  video.load();
-  const restore = () => {
-    video.currentTime = timeFor(lastP, activeSource);
-    lastWrittenFrame = -1; // force the next tick to re-assert on the new source
-    video.removeEventListener('loadedmetadata', restore);
-  };
-  video.addEventListener('loadedmetadata', restore);
+  const meta = SEQ[key];
+  canvas.width = meta.w;
+  canvas.height = meta.h;
+  frames = new Array(meta.n);
+  loadedFlags = new Array(meta.n).fill(false);
+  drawnFrame = -1;
+  lastWrittenFrame = -1;
+  let firstDrawn = false;
+  for (let i = 0; i < meta.n; i++) {
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => {
+      loadedFlags[i] = true;
+      // reveal as soon as the very first frame is ready — no full-set wait
+      if (i === 0 && !firstDrawn) { firstDrawn = true; drawFrame(0); hideBootVeil(); }
+    };
+    img.src = framePath(meta.dir, i);
+    frames[i] = img;
+  }
 }
-portraitMQ.addEventListener('change', e => setVideoSource(e.matches ? 'mobile' : 'desktop'));
-setVideoSource(activeSource);
+
+// Draw a frame, falling back to the nearest already-decoded one so a
+// not-yet-loaded frame never blanks the background mid-scrub.
+function drawFrame(i) {
+  let j = i;
+  if (!loadedFlags[j]) {
+    let lo = j, hi = j;
+    while (lo >= 0 || hi < frames.length) {
+      if (lo >= 0 && loadedFlags[lo]) { j = lo; break; }
+      if (hi < frames.length && loadedFlags[hi]) { j = hi; break; }
+      lo--; hi++;
+    }
+    if (!loadedFlags[j]) return; // nothing decoded yet
+  }
+  if (j === drawnFrame) return;
+  drawnFrame = j;
+  ctx.drawImage(frames[j], 0, 0, canvas.width, canvas.height);
+}
+
+portraitMQ.addEventListener('change', e => loadSequence(e.matches ? 'mobile' : 'desktop'));
+loadSequence(activeSource);
 
 function recalcMaxScroll() {
   maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
@@ -1130,19 +1164,7 @@ function hideBootVeil() {
   veilHidden = true;
   bootVeil.classList.add('boot-veil--hidden');
 }
-video.addEventListener('loadeddata', hideBootVeil, { once: true });
-setTimeout(hideBootVeil, 4000);
-
-/* ---------- iOS buffering nudge ---------- */
-let nudged = false;
-function nudge() {
-  if (nudged) return;
-  nudged = true;
-  video.play().then(() => video.pause()).catch(() => {});
-}
-window.addEventListener('touchstart', nudge, { once: true, passive: true });
-window.addEventListener('click', nudge, { once: true });
-window.addEventListener('wheel', nudge, { once: true, passive: true });
+setTimeout(hideBootVeil, 4000); // fallback so it can never stick
 
 /* ---------- liquid-lens displacement map ---------- */
 // Draws a 256x256 map: neutral gray at center, R/G channels ramp toward the
@@ -1387,7 +1409,6 @@ const SNAP = FRAME * 0.25; // close enough to the target — land on it
 let cur = 0;
 let rafId = null;
 let lastTime = null;
-let lastWrittenFrame = -1;
 
 function tick(ts) {
   rafId = requestAnimationFrame(tick);
@@ -1421,19 +1442,12 @@ function tick(ts) {
     cur += step;
   }
 
-  // One seek per distinct source frame. fastSeek (Firefox/Safari) is exact here
-  // because the footage is all-intra, and it's much cheaper than a precise seek;
-  // Chromium lacks it and falls back to currentTime. No `seeking` guard — the
-  // browser coalesces to the newest target, so we keep chasing the latest frame
-  // instead of stalling behind an in-flight seek (that stall dropped the scrub
-  // to a fraction of the source's 24fps).
-  if (video.readyState >= 2) {
-    const frame = Math.round(cur * SRC_FPS);
-    if (frame !== lastWrittenFrame) {
-      lastWrittenFrame = frame;
-      const t = frame * FRAME;
-      if (video.fastSeek) video.fastSeek(t); else video.currentTime = t;
-    }
+  // Blit the current frame. No decode pipeline to wait on — drawing a decoded
+  // image is cheap, so this keeps up with the display refresh.
+  const frame = Math.min(SEQ[activeSource].n - 1, Math.max(0, Math.round(cur * SRC_FPS)));
+  if (frame !== lastWrittenFrame) {
+    lastWrittenFrame = frame;
+    drawFrame(frame);
   }
 
   checkLoopBack(p);
