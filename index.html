@@ -1099,16 +1099,34 @@ const SEQ = {
 };
 const framePath = (dir, i) => `${dir}/f${String(i + 1).padStart(3, '0')}.webp`;
 
+// Bounded decoded-frame window: we keep a capped set of pre-decoded
+// ImageBitmaps around the playhead and decode ahead in the scroll direction.
+// createImageBitmap decodes OFF the main thread, so drawing is always an
+// instant GPU blit of an already-decoded bitmap — no decode in the hot path,
+// and memory stays bounded (unlike holding all 361 frames decoded).
+const CACHE_MAX = 64;      // decoded frames held (~236MB @720p) — tune for memory
+const AHEAD = 24;          // frames to warm ahead in the travel direction
+const BEHIND = 10;         // frames to keep warm behind (for reverse scrub)
+const MAX_INFLIGHT = 3;    // concurrent off-thread decodes (kept low so decode
+                           // work never crowds the main thread on weak GPUs)
+const canBitmap = typeof createImageBitmap === 'function';
+
 let activeSource = portraitMQ.matches ? 'mobile' : 'desktop';
 let maxScroll = 1;
 let lastP = 0;
-let frames = [];        // Image handles for the active sequence
-let loadedFlags = [];   // per-frame decode-ready flag
+let frames = [];        // Image handles (compressed source) for the active sequence
+let loadedFlags = [];   // per-frame "source loaded" flag
+let bitmaps = new Map();     // frame index -> decoded ImageBitmap
+let pending = new Set();     // indices currently decoding
+let seqGen = 0;             // bumped on sequence swap to void stale decodes
 let drawnFrame = -1;
-let lastWrittenFrame = -1; // frame index the scrub loop last requested
+let lastWrittenFrame = -1;  // frame index the scrub loop last requested
 
 function loadSequence(key) {
   activeSource = key;
+  seqGen++;
+  for (const b of bitmaps.values()) b.close();
+  bitmaps.clear(); pending.clear();
   const meta = SEQ[key];
   canvas.width = meta.w;
   canvas.height = meta.h;
@@ -1122,7 +1140,6 @@ function loadSequence(key) {
     img.decoding = 'async';
     img.onload = () => {
       loadedFlags[i] = true;
-      // reveal as soon as the very first frame is ready — no full-set wait
       if (i === 0 && !firstDrawn) { firstDrawn = true; drawFrame(0); hideBootVeil(); }
     };
     img.src = framePath(meta.dir, i);
@@ -1130,22 +1147,56 @@ function loadSequence(key) {
   }
 }
 
-// Draw a frame, falling back to the nearest already-decoded one so a
-// not-yet-loaded frame never blanks the background mid-scrub.
-function drawFrame(i) {
-  let j = i;
-  if (!loadedFlags[j]) {
-    let lo = j, hi = j;
-    while (lo >= 0 || hi < frames.length) {
-      if (lo >= 0 && loadedFlags[lo]) { j = lo; break; }
-      if (hi < frames.length && loadedFlags[hi]) { j = hi; break; }
-      lo--; hi++;
-    }
-    if (!loadedFlags[j]) return; // nothing decoded yet
+function requestBitmap(i) {
+  if (!canBitmap || i < 0 || i >= frames.length) return;
+  if (bitmaps.has(i) || pending.has(i) || !loadedFlags[i] || pending.size >= MAX_INFLIGHT) return;
+  const gen = seqGen;
+  pending.add(i);
+  createImageBitmap(frames[i]).then(bmp => {
+    pending.delete(i);
+    if (gen !== seqGen) { bmp.close(); return; } // orientation swapped mid-decode
+    bitmaps.set(i, bmp);
+  }).catch(() => pending.delete(i));
+}
+
+// Keep memory bounded by dropping whichever decoded frames are farthest from
+// the playhead — better than plain LRU for back-and-forth scrubbing.
+function evict(center) {
+  while (bitmaps.size > CACHE_MAX) {
+    let far = -1, key = null;
+    for (const k of bitmaps.keys()) { const d = Math.abs(k - center); if (d > far) { far = d; key = k; } }
+    const b = bitmaps.get(key); bitmaps.delete(key); if (b) b.close();
   }
-  if (j === drawnFrame) return;
-  drawnFrame = j;
-  ctx.drawImage(frames[j], 0, 0, canvas.width, canvas.height);
+}
+
+// Warm the window nearest-first, weighted in the direction of travel.
+function prefetch(center, dir) {
+  if (!canBitmap) return;
+  const d = dir >= 0 ? 1 : -1;
+  for (let k = 0; k <= AHEAD; k++) {
+    requestBitmap(center + k * d);
+    if (k >= 1 && k <= BEHIND) requestBitmap(center - k * d);
+    if (pending.size >= MAX_INFLIGHT) break;
+  }
+  evict(center);
+}
+
+function paint(idx) {
+  if (idx === drawnFrame) return;
+  drawnFrame = idx;
+  ctx.drawImage(bitmaps.get(idx) || frames[idx], 0, 0, canvas.width, canvas.height);
+}
+
+// Prefer the exact frame (decoded bitmap, else source image); if neither is
+// ready yet, blit the nearest ready frame so the background never blanks.
+function drawFrame(i) {
+  if (bitmaps.has(i) || loadedFlags[i]) { paint(i); if (!bitmaps.has(i)) requestBitmap(i); return; }
+  let lo = i - 1, hi = i + 1;
+  while (lo >= 0 || hi < frames.length) {
+    if (lo >= 0 && (bitmaps.has(lo) || loadedFlags[lo])) { paint(lo); return; }
+    if (hi < frames.length && (bitmaps.has(hi) || loadedFlags[hi])) { paint(hi); return; }
+    lo--; hi++;
+  }
 }
 
 portraitMQ.addEventListener('change', e => loadSequence(e.matches ? 'mobile' : 'desktop'));
@@ -1442,9 +1493,10 @@ function tick(ts) {
     cur += step;
   }
 
-  // Blit the current frame. No decode pipeline to wait on — drawing a decoded
-  // image is cheap, so this keeps up with the display refresh.
+  // Warm the decoded-frame window ahead of the playhead, then blit the current
+  // frame — a pre-decoded bitmap, so the draw itself never stalls on a decode.
   const frame = Math.min(SEQ[activeSource].n - 1, Math.max(0, Math.round(cur * SRC_FPS)));
+  prefetch(frame, target >= cur ? 1 : -1);
   if (frame !== lastWrittenFrame) {
     lastWrittenFrame = frame;
     drawFrame(frame);
