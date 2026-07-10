@@ -1093,6 +1093,7 @@ function setVideoSource(key) {
   video.load();
   const restore = () => {
     video.currentTime = timeFor(lastP, activeSource);
+    lastWrittenFrame = -1; // force the next tick to re-assert on the new source
     video.removeEventListener('loadedmetadata', restore);
   };
   video.addEventListener('loadedmetadata', restore);
@@ -1348,9 +1349,18 @@ function checkLoopBack(p, cur, scrollY) {
 }
 
 /* ---------- scrub engine (rAF loop) ---------- */
+// Source footage is 24fps, all-intra (every frame a keyframe), so seeking to any
+// exact frame is cheap. We drive currentTime on that frame grid.
+const SRC_FPS = 24;
+const FRAME = 1 / SRC_FPS;
+const SMOOTH = 0.16;    // per-60fps-frame ease factor (fast start, gentle finish)
+const MIN_GLIDE = 1.2;  // floor speed for the tail, in video-seconds per real-second
+const SNAP = FRAME * 0.25; // close enough to the target — land on it
+
 let cur = 0;
 let rafId = null;
 let lastTime = null;
+let lastWrittenFrame = -1;
 
 function tick(ts) {
   rafId = requestAnimationFrame(tick);
@@ -1367,11 +1377,31 @@ function tick(ts) {
   lastP = p;
 
   const target = timeFor(p, activeSource);
-  const k = reduced() ? 0.5 : 1 - Math.pow(1 - 0.16, dt * 60);
-  cur += (target - cur) * k;
+  const dist = target - cur;
+  const adist = Math.abs(dist);
+  if (adist < SNAP) {
+    cur = target;
+  } else {
+    // Exponential ease gives a natural fast-in/slow-out, but on its own the
+    // finish asymptotes — the last fraction of a frame crawls over many rAF
+    // ticks, which read as the frame rate collapsing at the end of a scroll.
+    // The MIN_GLIDE floor keeps the tail moving at a steady minimum speed so it
+    // coasts evenly to a stop instead of stuttering to one.
+    const ease = dist * (reduced() ? 0.5 : 1 - Math.pow(1 - SMOOTH, dt * 60));
+    const floor = MIN_GLIDE * dt * Math.sign(dist);
+    let step = Math.abs(ease) > Math.abs(floor) ? ease : floor;
+    if (Math.abs(step) > adist) step = dist; // never overshoot
+    cur += step;
+  }
 
-  if (video.readyState >= 2 && !video.seeking && Math.abs(cur - video.currentTime) > 1 / 60) {
-    video.currentTime = cur;
+  // One seek per distinct source frame: writing sub-frame deltas just makes the
+  // browser re-seek within the same displayed frame, which is what churned.
+  if (video.readyState >= 2 && !video.seeking) {
+    const frame = Math.round(cur * SRC_FPS);
+    if (frame !== lastWrittenFrame) {
+      lastWrittenFrame = frame;
+      video.currentTime = frame * FRAME;
+    }
   }
 
   cur = checkLoopBack(p, cur, scrollY);
