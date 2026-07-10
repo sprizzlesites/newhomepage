@@ -1449,13 +1449,8 @@ function checkLoopBack(p) {
 }
 
 /* ---------- scrub engine (rAF loop) ---------- */
-// Source footage is 24fps, all-intra (every frame a keyframe), so seeking to any
-// exact frame is cheap. We drive currentTime on that frame grid.
+// Source footage is 24fps; scroll position maps straight onto that frame grid.
 const SRC_FPS = 24;
-const FRAME = 1 / SRC_FPS;
-const SMOOTH = 0.16;    // per-60fps-frame ease factor (fast start, gentle finish)
-const MIN_GLIDE = 1.2;  // floor speed for the tail, in video-seconds per real-second
-const SNAP = FRAME * 0.25; // close enough to the target — land on it
 
 let cur = 0;
 let rafId = null;
@@ -1475,28 +1470,16 @@ function tick(ts) {
   const p = clamp01(scrollY / maxScroll);
   lastP = p;
 
-  const target = timeFor(p, activeSource);
-  const dist = target - cur;
-  const adist = Math.abs(dist);
-  if (adist < SNAP) {
-    cur = target;
-  } else {
-    // Exponential ease gives a natural fast-in/slow-out, but on its own the
-    // finish asymptotes — the last fraction of a frame crawls over many rAF
-    // ticks, which read as the frame rate collapsing at the end of a scroll.
-    // The MIN_GLIDE floor keeps the tail moving at a steady minimum speed so it
-    // coasts evenly to a stop instead of stuttering to one.
-    const ease = dist * (reduced() ? 0.5 : 1 - Math.pow(1 - SMOOTH, dt * 60));
-    const floor = MIN_GLIDE * dt * Math.sign(dist);
-    let step = Math.abs(ease) > Math.abs(floor) ? ease : floor;
-    if (Math.abs(step) > adist) step = dist; // never overshoot
-    cur += step;
-  }
+  // Direct 1:1 scrub — no smoothing. The displayed frame is a pure function of
+  // scroll position, so the instant scrolling stops the frame stops on the same
+  // frame, at whatever rate the scroll itself was moving. No coast, no tail.
+  cur = timeFor(p, activeSource);
 
   // Warm the decoded-frame window ahead of the playhead, then blit the current
   // frame — a pre-decoded bitmap, so the draw itself never stalls on a decode.
   const frame = Math.min(SEQ[activeSource].n - 1, Math.max(0, Math.round(cur * SRC_FPS)));
-  prefetch(frame, target >= cur ? 1 : -1);
+  const dir = frame >= lastWrittenFrame ? 1 : -1; // travel direction for prefetch
+  prefetch(frame, dir);
   if (frame !== lastWrittenFrame) {
     lastWrittenFrame = frame;
     drawFrame(frame);
