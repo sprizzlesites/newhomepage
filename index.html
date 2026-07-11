@@ -143,7 +143,10 @@ img,video{max-width:100%;display:block;}
 
 /* --- nav (auto-hiding glass pill) --- */
 .nav{
-  position:fixed;
+  /* absolute inside the fixed .stage (not position:fixed itself) — a fixed
+     element repaint-jitters on iOS while we drive scroll programmatically;
+     absolute-in-a-fixed-parent composites stably. */
+  position:absolute;
   top:18px;
   left:50%;
   z-index:60;
@@ -1088,6 +1091,26 @@ function zoneForProgress(p) {
   return 5;
 }
 
+// Inverse of timeFor: given a video time, the scroll progress that maps to it.
+// The video ranges are contiguous and monotonically increasing, so this is a
+// clean piecewise-linear inversion. Used to drive a snap at the video's own rate.
+function progressForTime(vt, sourceKey) {
+  const ranges = TIME_RANGES[sourceKey];
+  const lo = ranges[0][0], hi = ranges[ranges.length - 1][1];
+  vt = vt < lo ? lo : vt > hi ? hi : vt;
+  for (let i = 0; i < ranges.length; i++) {
+    const [a, b] = ranges[i];
+    if (vt <= b || i === ranges.length - 1) {
+      const local = b > a ? (vt - a) / (b - a) : 0;
+      return clamp01(BP[i] + local * (BP[i + 1] - BP[i]));
+    }
+  }
+  return 1;
+}
+
+// The snap anchors: top (intro), the five zone-dwell centres, and the end.
+const SECTION_P = [0, ...[1, 2, 3, 4, 5].map(n => (ZONE_DWELL[n][0] + ZONE_DWELL[n][1]) / 2), 1];
+
 /* ---------- image-sequence source (full-res frames, no video decode) ---------- */
 // EXPERIMENT (test branch): instead of scrubbing a <video>, we preload the
 // footage as a full-res WebP frame sequence and blit the current frame to a
@@ -1210,47 +1233,70 @@ function recalcMaxScroll() {
   smoothScroll = clampScroll(smoothScroll);
 }
 
-/* ---------- virtual smooth-scroll (igloo-style eased glide) ---------- */
-// We take over wheel/touch/key input and drive our own eased scroll position,
-// so the scrub glides to rest on OUR curve at 60fps instead of the browser's
-// native momentum. The real scrollbar is kept in sync (we scrollTo the eased
-// value each frame), so the page stays accessible and the bar draggable.
+/* ---------- virtual smooth-scroll + section snap ---------- */
+// We take over wheel/touch/key input and drive our own scroll position. A slow
+// drag glides freely on an eased curve; a FLICK snaps to the next of the five
+// sections in the flick direction and plays that transition at the video's own
+// natural frame rate (1x), by tweening video-time linearly and inverting it
+// back to a scroll position. The real scrollbar is synced each frame.
 // --- feel knobs -------------------------------------------------------------
-const LERP = 0.7;         // glide ease per 60fps frame — higher tighter, lower floatier
-const WHEEL_SPEED = 4.4;  // distance covered per wheel/trackpad notch (reactivity)
-const TOUCH_SPEED = 6.8;  // finger-drag distance multiplier
-const FLICK = 370;        // touch flick momentum: ms of release-velocity to coast
+const LERP = 0.7;         // free-drag glide ease per 60fps frame (higher = tighter) [your tuning]
+const WHEEL_SPEED = 4.4;  // distance covered per wheel/trackpad notch (reactivity) [your tuning]
+const TOUCH_SPEED = 6.8;  // finger-drag distance multiplier [your tuning]
+const TFLICK = 0.4;       // finger release speed (px/ms) that counts as a flick
+const SNAP_SPEED = 1;     // section-snap playback rate (1 = video's natural speed)
 // ----------------------------------------------------------------------------
 const clampScroll = v => Math.max(0, Math.min(maxScroll, v));
 const addScroll = d => { if (contact.hidden) targetScroll = clampScroll(targetScroll + d); };
 
+// snap animation state (drives smoothScroll directly while active)
+const snap = { active: false, t0: 0, dur: 0, vt0: 0, vt1: 0 };
+const cancelSnap = () => { snap.active = false; };
+function snapInDirection(dir) {
+  const pNow = clampScroll(smoothScroll) / maxScroll;
+  let targetP = null;
+  if (dir > 0) { for (let i = 0; i < SECTION_P.length; i++) if (SECTION_P[i] > pNow + 0.006) { targetP = SECTION_P[i]; break; } }
+  else { for (let i = SECTION_P.length - 1; i >= 0; i--) if (SECTION_P[i] < pNow - 0.006) { targetP = SECTION_P[i]; break; } }
+  if (targetP == null) return;                 // already at the end/top in that direction
+  snap.vt0 = timeFor(pNow, activeSource);
+  snap.vt1 = timeFor(targetP, activeSource);
+  // duration = the video-time distance, so playback runs at the natural rate
+  snap.dur = Math.max(220, Math.abs(snap.vt1 - snap.vt0) * 1000 / SNAP_SPEED);
+  snap.t0 = performance.now();
+  snap.active = true;
+}
+
 window.addEventListener('wheel', e => {
   if (!contact.hidden) return;          // let the dialog scroll natively
   e.preventDefault();
+  cancelSnap();
   let d = e.deltaY;
   if (e.deltaMode === 1) d *= 16;                    // lines -> px
   else if (e.deltaMode === 2) d *= window.innerHeight; // pages -> px
   addScroll(d * WHEEL_SPEED);
 }, { passive: false });
 
-// touch: finger drag (amplified) + flick momentum on release, so one swipe
-// covers real distance instead of just the literal finger travel.
-let touchY = null, touchBase = 0, tvPrev = 0, tvTime = 0, tVel = 0;
+// touch: free drag (amplified by TOUCH_SPEED), and a flick snaps to the next
+// section. The flick test uses raw FINGER velocity, so it's independent of
+// TOUCH_SPEED — cranking drag sensitivity doesn't turn every release into a flick.
+let touchY = null, touchBase = 0, fPrevY = 0, fTime = 0, fVel = 0;
 window.addEventListener('touchstart', e => {
   if (!contact.hidden) return;
-  touchY = e.touches[0].clientY; touchBase = targetScroll;
-  tvPrev = targetScroll; tvTime = performance.now(); tVel = 0;
+  cancelSnap();
+  touchY = fPrevY = e.touches[0].clientY; touchBase = targetScroll;
+  fTime = performance.now(); fVel = 0;
 }, { passive: true });
 window.addEventListener('touchmove', e => {
   if (!contact.hidden || touchY === null) return;
   e.preventDefault();
-  const next = clampScroll(touchBase + (touchY - e.touches[0].clientY) * TOUCH_SPEED);
-  const now = performance.now(), dt = now - tvTime;
-  if (dt > 0) { tVel = (next - tvPrev) / dt; tvPrev = next; tvTime = now; } // px/ms
-  targetScroll = next;
+  const curY = e.touches[0].clientY;
+  const now = performance.now(), dt = now - fTime;
+  if (dt > 0) { fVel = (curY - fPrevY) / dt; fPrevY = curY; fTime = now; } // finger px/ms
+  targetScroll = clampScroll(touchBase + (touchY - curY) * TOUCH_SPEED);
 }, { passive: false });
 window.addEventListener('touchend', () => {
-  if (touchY !== null) targetScroll = clampScroll(targetScroll + tVel * FLICK);
+  // finger up (fVel<0) => scroll forward; a fast enough release snaps a section
+  if (touchY !== null && Math.abs(fVel) > TFLICK) snapInDirection(-Math.sign(fVel));
   touchY = null;
 }, { passive: true });
 
@@ -1259,10 +1305,10 @@ window.addEventListener('keydown', e => {
   const t = (document.activeElement && document.activeElement.tagName) || '';
   if (t === 'INPUT' || t === 'TEXTAREA') return;
   const vh = window.innerHeight;
-  if (e.key === 'Home') { e.preventDefault(); targetScroll = 0; return; }
-  if (e.key === 'End') { e.preventDefault(); targetScroll = maxScroll; return; }
+  if (e.key === 'Home') { e.preventDefault(); cancelSnap(); targetScroll = 0; return; }
+  if (e.key === 'End') { e.preventDefault(); cancelSnap(); targetScroll = maxScroll; return; }
   const map = { ArrowDown: 90, ArrowUp: -90, PageDown: vh * 0.9, PageUp: -vh * 0.9, ' ': vh * 0.9 };
-  if (e.key in map) { e.preventDefault(); addScroll(map[e.key]); }
+  if (e.key in map) { e.preventDefault(); cancelSnap(); addScroll(map[e.key]); }
 });
 
 // If anything else moves the page (scrollbar drag, find-in-page), adopt it —
@@ -1371,7 +1417,8 @@ function updateNavDots(zone) {
 }
 function jumpToZone(n) {
   const [a, b] = ZONE_DWELL[n];
-  // hand the destination to the virtual scroll so it glides there on our curve
+  // a direct pick can span many sections, so glide (fast) rather than snap at 1x
+  cancelSnap();
   targetScroll = clampScroll(((a + b) / 2) * maxScroll);
   if (reduced()) smoothScroll = targetScroll;
 }
@@ -1504,6 +1551,7 @@ function checkLoopBack(p) {
     looping = true;
     loopVeil.classList.add('is-on');
     setTimeout(() => {                 // fully dipped — reset under cover
+      cancelSnap();
       targetScroll = smoothScroll = 0;
       window.scrollTo(0, 0);
       cur = 0;
@@ -1534,13 +1582,23 @@ function tick(ts) {
   // freeze everything so the video doesn't rewind behind it
   if (!contact.hidden) return;
 
-  // Ease the virtual scroll toward where input put it — this IS the glide.
-  // Native momentum is out of the picture (we preventDefault input); the scrub
-  // rides this curve and settles on it, then we sync the real scrollbar.
-  const k = 1 - Math.pow(1 - LERP, dt * 60);
-  smoothScroll += (targetScroll - smoothScroll) * k;
-  if (Math.abs(targetScroll - smoothScroll) < 0.4) smoothScroll = targetScroll;
-  if (Math.abs(window.scrollY - smoothScroll) > 0.5) window.scrollTo(0, smoothScroll);
+  // Advance the scroll position. A flick snap plays video-time linearly (so the
+  // transition runs at the footage's natural 1x rate); otherwise the free-drag
+  // glide eases toward wherever input put the target.
+  if (snap.active) {
+    const e = Math.min(1, (ts - snap.t0) / snap.dur);
+    const vt = snap.vt0 + (snap.vt1 - snap.vt0) * e;
+    smoothScroll = clampScroll(progressForTime(vt, activeSource) * maxScroll);
+    targetScroll = smoothScroll;              // so the glide doesn't fight it after
+    if (e >= 1) snap.active = false;
+  } else {
+    const k = 1 - Math.pow(1 - LERP, dt * 60);
+    smoothScroll += (targetScroll - smoothScroll) * k;
+    if (Math.abs(targetScroll - smoothScroll) < 0.4) smoothScroll = targetScroll;
+  }
+  // sync the real scrollbar, rounded so sub-pixel writes don't jitter fixed UI
+  const sy = Math.round(smoothScroll);
+  if (window.scrollY !== sy) window.scrollTo(0, sy);
 
   const scrollY = smoothScroll;
   const p = clamp01(scrollY / maxScroll);
