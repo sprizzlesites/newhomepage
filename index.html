@@ -1218,8 +1218,8 @@ function recalcMaxScroll() {
 // --- feel knobs -------------------------------------------------------------
 const LERP = 0.1;         // glide ease per 60fps frame — higher tighter, lower floatier
 const WHEEL_SPEED = 4.4;  // distance covered per wheel/trackpad notch (reactivity)
-const TOUCH_SPEED = 9.6;  // finger-drag distance multiplier
-const FLICK = 700;        // touch flick momentum: ms of release-velocity to coast
+const TOUCH_SPEED = 7.8;  // finger-drag distance multiplier
+const FLICK = 500;        // touch flick momentum: ms of release-velocity to coast
 // ----------------------------------------------------------------------------
 const clampScroll = v => Math.max(0, Math.min(maxScroll, v));
 const addScroll = d => { if (contact.hidden) targetScroll = clampScroll(targetScroll + d); };
