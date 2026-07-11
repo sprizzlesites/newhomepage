@@ -1216,10 +1216,10 @@ function recalcMaxScroll() {
 // native momentum. The real scrollbar is kept in sync (we scrollTo the eased
 // value each frame), so the page stays accessible and the bar draggable.
 // --- feel knobs -------------------------------------------------------------
-const LERP = 0.2;         // glide ease per 60fps frame — higher tighter, lower floatier
-const WHEEL_SPEED = 2.4;  // distance covered per wheel/trackpad notch (reactivity)
-const TOUCH_SPEED = 1.6;  // finger-drag distance multiplier
-const FLICK = 200;        // touch flick momentum: ms of release-velocity to coast
+const LERP = 0.4;         // glide ease per 60fps frame — higher tighter, lower floatier
+const WHEEL_SPEED = 4.4;  // distance covered per wheel/trackpad notch (reactivity)
+const TOUCH_SPEED = 4.6;  // finger-drag distance multiplier
+const FLICK = 700;        // touch flick momentum: ms of release-velocity to coast
 // ----------------------------------------------------------------------------
 const clampScroll = v => Math.max(0, Math.min(maxScroll, v));
 const addScroll = d => { if (contact.hidden) targetScroll = clampScroll(targetScroll + d); };
