@@ -1094,26 +1094,28 @@ function zoneForProgress(p) {
 // canvas. Drawing a decoded image is effectively free, so the scrub tracks the
 // scroll at the display's own rate instead of being capped by seek throughput.
 const SEQ = {
-  desktop: { dir: 'assets/seq-desktop', w: 1280, h: 720, n: 361 },
-  mobile:  { dir: 'assets/seq-mobile',  w: 720,  h: 1280, n: 361 },
+  desktop: { dir: 'assets/seq60-desktop', w: 1280, h: 720, n: 898 },
+  mobile:  { dir: 'assets/seq60-mobile',  w: 720,  h: 1280, n: 898 },
 };
-const framePath = (dir, i) => `${dir}/f${String(i + 1).padStart(3, '0')}.webp`;
+const framePath = (dir, i) => `${dir}/f${String(i + 1).padStart(4, '0')}.webp`;
 
 // Bounded decoded-frame window: we keep a capped set of pre-decoded
 // ImageBitmaps around the playhead and decode ahead in the scroll direction.
 // createImageBitmap decodes OFF the main thread, so drawing is always an
 // instant GPU blit of an already-decoded bitmap — no decode in the hot path,
-// and memory stays bounded (unlike holding all 361 frames decoded).
-const CACHE_MAX = 64;      // decoded frames held (~236MB @720p) — tune for memory
-const AHEAD = 24;          // frames to warm ahead in the travel direction
-const BEHIND = 10;         // frames to keep warm behind (for reverse scrub)
-const MAX_INFLIGHT = 3;    // concurrent off-thread decodes (kept low so decode
+// and memory stays bounded (unlike holding all ~900 frames decoded).
+const CACHE_MAX = 80;      // decoded frames held (~1.3s @60fps, ~295MB @720p) — tune for memory
+const AHEAD = 40;          // frames to warm ahead in the travel direction (~0.67s @60fps)
+const BEHIND = 16;         // frames to keep warm behind (for reverse scrub)
+const MAX_INFLIGHT = 4;    // concurrent off-thread decodes (kept modest so decode
                            // work never crowds the main thread on weak GPUs)
 const canBitmap = typeof createImageBitmap === 'function';
 
 let activeSource = portraitMQ.matches ? 'mobile' : 'desktop';
 let maxScroll = 1;
 let lastP = 0;
+let targetScroll = 0;   // where input wants the scroll (set instantly)
+let smoothScroll = 0;   // eased position that actually drives the scrub
 let frames = [];        // Image handles (compressed source) for the active sequence
 let loadedFlags = [];   // per-frame "source loaded" flag
 let bitmaps = new Map();     // frame index -> decoded ImageBitmap
@@ -1204,7 +1206,58 @@ loadSequence(activeSource);
 
 function recalcMaxScroll() {
   maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+  targetScroll = clampScroll(targetScroll);
+  smoothScroll = clampScroll(smoothScroll);
 }
+
+/* ---------- virtual smooth-scroll (igloo-style eased glide) ---------- */
+// We take over wheel/touch/key input and drive our own eased scroll position,
+// so the scrub glides to rest on OUR curve at 60fps instead of the browser's
+// native momentum. The real scrollbar is kept in sync (we scrollTo the eased
+// value each frame), so the page stays accessible and the bar draggable.
+const LERP = 0.2;    // ease per 60fps frame — higher is snappier, lower floatier
+                     // (this is THE knob for glide length: ~0.3 tight, ~0.1 long)
+const clampScroll = v => Math.max(0, Math.min(maxScroll, v));
+const addScroll = d => { if (contact.hidden) targetScroll = clampScroll(targetScroll + d); };
+
+window.addEventListener('wheel', e => {
+  if (!contact.hidden) return;          // let the dialog scroll natively
+  e.preventDefault();
+  let d = e.deltaY;
+  if (e.deltaMode === 1) d *= 16;                    // lines -> px
+  else if (e.deltaMode === 2) d *= window.innerHeight; // pages -> px
+  addScroll(d);
+}, { passive: false });
+
+let touchY = null, touchBase = 0;
+window.addEventListener('touchstart', e => {
+  if (!contact.hidden) return;
+  touchY = e.touches[0].clientY; touchBase = targetScroll;
+}, { passive: true });
+window.addEventListener('touchmove', e => {
+  if (!contact.hidden || touchY === null) return;
+  e.preventDefault();
+  targetScroll = clampScroll(touchBase + (touchY - e.touches[0].clientY));
+}, { passive: false });
+window.addEventListener('touchend', () => { touchY = null; }, { passive: true });
+
+window.addEventListener('keydown', e => {
+  if (!contact.hidden) return;
+  const t = (document.activeElement && document.activeElement.tagName) || '';
+  if (t === 'INPUT' || t === 'TEXTAREA') return;
+  const vh = window.innerHeight;
+  if (e.key === 'Home') { e.preventDefault(); targetScroll = 0; return; }
+  if (e.key === 'End') { e.preventDefault(); targetScroll = maxScroll; return; }
+  const map = { ArrowDown: 90, ArrowUp: -90, PageDown: vh * 0.9, PageUp: -vh * 0.9, ' ': vh * 0.9 };
+  if (e.key in map) { e.preventDefault(); addScroll(map[e.key]); }
+});
+
+// If anything else moves the page (scrollbar drag, find-in-page), adopt it —
+// but ignore our own per-frame scrollTo, which stays within a px of smoothScroll.
+window.addEventListener('scroll', () => {
+  if (Math.abs(window.scrollY - smoothScroll) > 2) targetScroll = smoothScroll = window.scrollY;
+}, { passive: true });
+
 recalcMaxScroll();
 window.addEventListener('resize', recalcMaxScroll);
 
@@ -1305,8 +1358,9 @@ function updateNavDots(zone) {
 }
 function jumpToZone(n) {
   const [a, b] = ZONE_DWELL[n];
-  const targetP = (a + b) / 2;
-  window.scrollTo({ top: targetP * maxScroll, behavior: reduced() ? 'auto' : 'smooth' });
+  // hand the destination to the virtual scroll so it glides there on our curve
+  targetScroll = clampScroll(((a + b) / 2) * maxScroll);
+  if (reduced()) smoothScroll = targetScroll;
 }
 document.querySelectorAll('[data-zone-jump]').forEach(el => {
   el.addEventListener('click', () => jumpToZone(Number(el.dataset.zoneJump)));
@@ -1429,14 +1483,15 @@ function updateZoneCards(p, dt) {
 // a beat while we reset scroll + video to the top. It reads as an intentional
 // transition rather than a chop — and critically it only fires once the final
 // frame has actually been shown, so the ending always plays out in full.
-const END_FRAME = 24 * 15 - 1; // last frame of the 15s / 24fps footage (359)
 let looping = false;
 function checkLoopBack(p) {
   if (looping) return;
-  if (p >= 0.999 && lastWrittenFrame >= END_FRAME) {
+  // fire once the last frame of the active sequence has actually been shown
+  if (p >= 0.999 && lastWrittenFrame >= SEQ[activeSource].n - 2) {
     looping = true;
     loopVeil.classList.add('is-on');
     setTimeout(() => {                 // fully dipped — reset under cover
+      targetScroll = smoothScroll = 0;
       window.scrollTo(0, 0);
       cur = 0;
       lastWrittenFrame = -1;
@@ -1449,8 +1504,8 @@ function checkLoopBack(p) {
 }
 
 /* ---------- scrub engine (rAF loop) ---------- */
-// Source footage is 24fps; scroll position maps straight onto that frame grid.
-const SRC_FPS = 24;
+// Source footage is motion-interpolated to 60fps; scroll maps onto that grid.
+const SRC_FPS = 60;
 
 let cur = 0;
 let rafId = null;
@@ -1466,13 +1521,19 @@ function tick(ts) {
   // freeze everything so the video doesn't rewind behind it
   if (!contact.hidden) return;
 
-  const scrollY = window.scrollY; // read once per frame
+  // Ease the virtual scroll toward where input put it — this IS the glide.
+  // Native momentum is out of the picture (we preventDefault input); the scrub
+  // rides this curve and settles on it, then we sync the real scrollbar.
+  const k = 1 - Math.pow(1 - LERP, dt * 60);
+  smoothScroll += (targetScroll - smoothScroll) * k;
+  if (Math.abs(targetScroll - smoothScroll) < 0.4) smoothScroll = targetScroll;
+  if (Math.abs(window.scrollY - smoothScroll) > 0.5) window.scrollTo(0, smoothScroll);
+
+  const scrollY = smoothScroll;
   const p = clamp01(scrollY / maxScroll);
   lastP = p;
 
-  // Direct 1:1 scrub — no smoothing. The displayed frame is a pure function of
-  // scroll position, so the instant scrolling stops the frame stops on the same
-  // frame, at whatever rate the scroll itself was moving. No coast, no tail.
+  // Frame is a pure function of the (already eased) scroll position.
   cur = timeFor(p, activeSource);
 
   // Warm the decoded-frame window ahead of the playhead, then blit the current
@@ -1548,6 +1609,7 @@ function openContact(service) {
 function closeContact() {
   contact.classList.remove('is-open');
   document.documentElement.style.overflow = '';
+  targetScroll = smoothScroll = savedScrollY; // resume the glide where we left it
   window.scrollTo(0, savedScrollY);
   lastScrollY = savedScrollY; // don't read the restore as a downward fling
   document.removeEventListener('keydown', onContactKeydown);
