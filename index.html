@@ -1215,8 +1215,12 @@ function recalcMaxScroll() {
 // so the scrub glides to rest on OUR curve at 60fps instead of the browser's
 // native momentum. The real scrollbar is kept in sync (we scrollTo the eased
 // value each frame), so the page stays accessible and the bar draggable.
-const LERP = 0.2;    // ease per 60fps frame — higher is snappier, lower floatier
-                     // (this is THE knob for glide length: ~0.3 tight, ~0.1 long)
+// --- feel knobs -------------------------------------------------------------
+const LERP = 0.2;         // glide ease per 60fps frame — higher tighter, lower floatier
+const WHEEL_SPEED = 2.4;  // distance covered per wheel/trackpad notch (reactivity)
+const TOUCH_SPEED = 1.6;  // finger-drag distance multiplier
+const FLICK = 200;        // touch flick momentum: ms of release-velocity to coast
+// ----------------------------------------------------------------------------
 const clampScroll = v => Math.max(0, Math.min(maxScroll, v));
 const addScroll = d => { if (contact.hidden) targetScroll = clampScroll(targetScroll + d); };
 
@@ -1226,20 +1230,29 @@ window.addEventListener('wheel', e => {
   let d = e.deltaY;
   if (e.deltaMode === 1) d *= 16;                    // lines -> px
   else if (e.deltaMode === 2) d *= window.innerHeight; // pages -> px
-  addScroll(d);
+  addScroll(d * WHEEL_SPEED);
 }, { passive: false });
 
-let touchY = null, touchBase = 0;
+// touch: finger drag (amplified) + flick momentum on release, so one swipe
+// covers real distance instead of just the literal finger travel.
+let touchY = null, touchBase = 0, tvPrev = 0, tvTime = 0, tVel = 0;
 window.addEventListener('touchstart', e => {
   if (!contact.hidden) return;
   touchY = e.touches[0].clientY; touchBase = targetScroll;
+  tvPrev = targetScroll; tvTime = performance.now(); tVel = 0;
 }, { passive: true });
 window.addEventListener('touchmove', e => {
   if (!contact.hidden || touchY === null) return;
   e.preventDefault();
-  targetScroll = clampScroll(touchBase + (touchY - e.touches[0].clientY));
+  const next = clampScroll(touchBase + (touchY - e.touches[0].clientY) * TOUCH_SPEED);
+  const now = performance.now(), dt = now - tvTime;
+  if (dt > 0) { tVel = (next - tvPrev) / dt; tvPrev = next; tvTime = now; } // px/ms
+  targetScroll = next;
 }, { passive: false });
-window.addEventListener('touchend', () => { touchY = null; }, { passive: true });
+window.addEventListener('touchend', () => {
+  if (touchY !== null) targetScroll = clampScroll(targetScroll + tVel * FLICK);
+  touchY = null;
+}, { passive: true });
 
 window.addEventListener('keydown', e => {
   if (!contact.hidden) return;
