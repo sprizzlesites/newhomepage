@@ -8,8 +8,6 @@
   :root{
     --bg-0:#08090b;
     --bg-1:#0e1014;
-    --glass:rgba(255,255,255,0.055);
-    --glass-hi:rgba(255,255,255,0.12);
     --glass-border:rgba(255,255,255,0.14);
     --glass-border-hi:rgba(255,255,255,0.28);
     --text-0:#f5f2e8;
@@ -19,9 +17,12 @@
     --gold-soft:#ffd873;
     --gold-glow:rgba(244,192,77,0.45);
     --gold-glow-soft:rgba(244,192,77,0.18);
-    --radius-lg:28px;
-    --radius-md:18px;
+    --radius-lg:20px;
+    --radius-md:12px;
     --radius-sm:12px;
+    --radius-pill:999px;
+    --font-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
     --spec-x:50%;
   }
 
@@ -34,7 +35,7 @@
       radial-gradient(circle at 85% 10%, rgba(244,192,77,0.07), transparent 40%),
       linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%, var(--bg-0));
     color:var(--text-0);
-    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family:var(--font-sans);
     -webkit-font-smoothing:antialiased;
     overflow-x:hidden;
     position:relative;
@@ -98,7 +99,7 @@
   /* ---------- glass panel base (liquid glass, cloned from index.html) ---------- */
   .glass{
     position:relative;
-    background:color-mix(in oklab, var(--bg-1) 46%, transparent);
+    background:color-mix(in oklab, var(--bg-1) 28%, transparent);
     border:1px solid var(--glass-border);
     border-radius:var(--radius-lg);
     -webkit-backdrop-filter:blur(20px) saturate(1.6) brightness(1.06);
@@ -251,7 +252,7 @@
     color:var(--bg-0);
     background:var(--gold-soft);
     padding:3px 9px;
-    border-radius:999px;
+    border-radius:var(--radius-pill);
     font-weight:700;
   }
   .product-main .tagline{
@@ -267,7 +268,7 @@
     border-radius:6px;
     padding:1px 6px;
     font-size:0.78em;
-    font-family:ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family:var(--font-mono);
     white-space:nowrap;
   }
 
@@ -344,7 +345,7 @@
     gap:0;
     background:rgba(255,255,255,0.04);
     border:1px solid var(--glass-border);
-    border-radius:999px;
+    border-radius:var(--radius-pill);
     padding:4px;
     width:fit-content;
     margin-left:auto;
@@ -355,7 +356,7 @@
     background:transparent;
     color:var(--text-1);
     padding:7px 22px;
-    border-radius:999px;
+    border-radius:var(--radius-pill);
     font-size:0.85rem;
     font-weight:600;
     letter-spacing:0.03em;
@@ -394,7 +395,7 @@
   }
   .buy-btn{
     padding:11px 26px;
-    border-radius:999px;
+    border-radius:var(--radius-pill);
     border:1px solid rgba(244,192,77,0.55);
     background:linear-gradient(160deg, rgba(244,192,77,0.9), rgba(212,159,40,0.9));
     color:#231a03;
@@ -536,7 +537,7 @@
 
   <div class="wrap">
 
-    <header class="top glass" style="border-radius:999px; padding:14px 26px;">
+    <header class="top glass" style="border-radius:var(--radius-pill); padding:14px 26px;">
       <div class="brand"><span class="dot"></span>Sprizzle Audio</div>
       <nav>
         <a href="#products">Plugins</a>
