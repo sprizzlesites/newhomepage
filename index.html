@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sprizzle — software · sound · dimension · motion · opsec</title>
+<title>Sprizzle — software · sound · dimension · motion · security</title>
 <meta name="description" content="Sprizzle is an independent studio for software, sound, and dimension — one small practice.">
 <meta name="theme-color" content="#0a0c0e">
-<meta property="og:title" content="Sprizzle — software · sound · dimension · motion · opsec">
+<meta property="og:title" content="Sprizzle — software · sound · dimension · motion · security">
 <meta property="og:description" content="An independent studio for software, sound, and dimension — one small practice.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
@@ -801,7 +801,7 @@ textarea:focus-visible{
         <button type="button" class="nav-dot" data-zone-jump="2" aria-label="Zone 2: audio production">2</button>
         <button type="button" class="nav-dot" data-zone-jump="3" aria-label="Zone 3: 3D design">3</button>
         <button type="button" class="nav-dot" data-zone-jump="4" aria-label="Zone 4: animation">4</button>
-        <button type="button" class="nav-dot" data-zone-jump="5" aria-label="Zone 5: opsec">5</button>
+        <button type="button" class="nav-dot" data-zone-jump="5" aria-label="Zone 5: security">5</button>
       </div>
       <span class="nav-div" aria-hidden="true"></span>
       <button type="button" class="nav-contact" id="navContact">Contact</button>
@@ -812,7 +812,7 @@ textarea:focus-visible{
       <button type="button" class="rail-item" data-zone-jump="2">02 SOUND</button>
       <button type="button" class="rail-item" data-zone-jump="3">03 DIMENSION</button>
       <button type="button" class="rail-item" data-zone-jump="4">04 MOTION</button>
-      <button type="button" class="rail-item" data-zone-jump="5">05 OPSEC</button>
+      <button type="button" class="rail-item" data-zone-jump="5">05 SECURITY</button>
     </div>
     <div class="rail-mobile" id="railMobile" aria-hidden="true"><div class="rail-mobile-fill" id="railMobileFill"></div></div>
 
@@ -849,7 +849,7 @@ textarea:focus-visible{
         <p class="zone-copy">Mixing, sound design, production, and DSP work. Click below to browse some of the tools I run on paid sessions, released for sale to the engineering community.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
-          <a class="btn btn-primary glass" href="#todo-sprizzle-vsts" data-oss="sprizzle-vsts">Explore Sprizzle VSTs ↗</a>
+          <a class="btn btn-primary glass" href="vst.html" data-oss="sprizzle-vsts">Explore Sprizzle VSTs ↗</a>
           <button type="button" class="btn btn-ghost" data-open-contact data-service="audio">Book this service</button>
         </div>
       </div>
@@ -892,7 +892,7 @@ textarea:focus-visible{
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
           <a class="btn btn-primary glass" href="freaksploit/freaksploit.html" data-oss="freaksploit">Open FreakSploit ↗</a>
-          <button type="button" class="btn btn-ghost" data-open-contact data-service="opsec">Book this service</button>
+          <button type="button" class="btn btn-ghost" data-open-contact data-service="Security">Book this service</button>
         </div>
       </div>
     </section>
@@ -925,14 +925,14 @@ textarea:focus-visible{
                 <button type="button" class="chip" data-value="Audio">Audio</button>
                 <button type="button" class="chip" data-value="3D">3D</button>
                 <button type="button" class="chip" data-value="Animation">Animation</button>
-                <button type="button" class="chip" data-value="OpSec">OpSec</button>
+                <button type="button" class="chip" data-value="Security">Security</button>
                 <button type="button" class="chip" data-value="Something else">Something else</button>
               </div>
             </div>
           </div>
 
           <div class="step" data-step="1">
-            <h2 class="step-question">What shape is it in?</h2>
+            <h2 class="step-question">What shape is your project in?</h2>
             <div class="chip-row" id="chipsShape">
               <button type="button" class="chip" data-value="Just an idea">Just an idea</button>
               <button type="button" class="chip" data-value="Specced &amp; ready">Specced &amp; ready</button>
@@ -1645,7 +1645,7 @@ document.addEventListener('visibilitychange', () => {
 startLoop();
 
 /* ---------- contact wizard ---------- */
-const SERVICE_KEYS = { software: 'Software', audio: 'Audio', '3d': '3D', animation: 'Animation', opsec: 'OpSec' };
+const SERVICE_KEYS = { software: 'Software', audio: 'Audio', '3d': '3D', animation: 'Animation', Security: 'Security' };
 const steps = Array.from(contactSteps.querySelectorAll('.step'));
 const chipsService = document.getElementById('chipsService');
 const chipsShape = document.getElementById('chipsShape');
