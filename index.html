@@ -1824,6 +1824,18 @@ document.querySelectorAll('a[data-oss]').forEach(a => {
   });
 });
 
+// hand off the current scroll-scrub background frame so vst.html can boot
+// hydrated on the same frame instead of flashing in cold.
+document.querySelector('a[data-oss="sprizzle-vsts"]')?.addEventListener('click', () => {
+  try {
+    sessionStorage.setItem('sprizzleBgHandoff', JSON.stringify({
+      frame: lastWrittenFrame,
+      source: activeSource,
+      ts: Date.now(),
+    }));
+  } catch (_) {}
+});
+
 navContact.addEventListener('click', () => openContact(null));
 document.querySelectorAll('[data-open-contact]').forEach(btn => {
   btn.addEventListener('click', () => openContact(btn.dataset.service));
