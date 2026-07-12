@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VST Plugins</title>
+<style>
+  :root{
+    --bg-0:#08090b;
+    --bg-1:#0e1014;
+    --glass:rgba(255,255,255,0.055);
+    --glass-hi:rgba(255,255,255,0.12);
+    --glass-border:rgba(255,255,255,0.14);
+    --glass-border-hi:rgba(255,255,255,0.28);
+    --text-0:#f5f2e8;
+    --text-1:#c9c4b6;
+    --text-2:#8d8879;
+    --gold:#f4c04d;
+    --gold-soft:#ffd873;
+    --gold-glow:rgba(244,192,77,0.45);
+    --gold-glow-soft:rgba(244,192,77,0.18);
+    --radius-lg:28px;
+    --radius-md:18px;
+    --radius-sm:12px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 15% -10%, rgba(244,192,77,0.10), transparent 45%),
+      radial-gradient(circle at 85% 10%, rgba(244,192,77,0.07), transparent 40%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%, var(--bg-0));
+    color:var(--text-0);
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  /* ambient glow blobs */
+  .glow-blob{
+    position:fixed;
+    border-radius:50%;
+    filter:blur(90px);
+    pointer-events:none;
+    z-index:0;
+    opacity:0.55;
+  }
+  .glow-blob.a{
+    width:520px;height:520px;
+    top:-160px;left:-160px;
+    background:radial-gradient(circle, var(--gold-glow), transparent 70%);
+  }
+  .glow-blob.b{
+    width:420px;height:420px;
+    bottom:-140px;right:-100px;
+    background:radial-gradient(circle, rgba(244,192,77,0.30), transparent 70%);
+  }
+  .glow-blob.c{
+    width:360px;height:360px;
+    top:40%;left:50%;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(circle, rgba(244,192,77,0.12), transparent 70%);
+  }
+
+  a{color:inherit;text-decoration:none;}
+
+  /* ---------- glass panel base ---------- */
+  .glass{
+    background:var(--glass);
+    border:1px solid var(--glass-border);
+    border-radius:var(--radius-lg);
+    backdrop-filter:blur(24px) saturate(140%);
+    -webkit-backdrop-filter:blur(24px) saturate(140%);
+    box-shadow:
+      0 8px 32px rgba(0,0,0,0.45),
+      inset 0 1px 0 rgba(255,255,255,0.10),
+      0 0 40px var(--gold-glow-soft);
+    position:relative;
+  }
+  .glass::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    background:linear-gradient(135deg, rgba(255,255,255,0.10), transparent 40%);
+    pointer-events:none;
+  }
+
+  /* ---------- layout shell ---------- */
+  .wrap{
+    position:relative;
+    z-index:1;
+    max-width:980px;
+    margin:0 auto;
+    padding:32px 20px 100px;
+  }
+
+  header.top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 24px;
+    margin-bottom:40px;
+  }
+  header.top .brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-weight:700;
+    font-size:1.15rem;
+    letter-spacing:0.02em;
+  }
+  header.top .brand .dot{
+    width:10px;height:10px;border-radius:50%;
+    background:var(--gold-soft);
+    box-shadow:0 0 12px 3px var(--gold-glow);
+  }
+  header.top nav a{
+    color:var(--text-1);
+    font-size:0.92rem;
+    margin-left:22px;
+    transition:color .2s ease;
+  }
+  header.top nav a:hover{color:var(--gold-soft);}
+
+  .hero{
+    text-align:center;
+    padding:56px 28px;
+    margin-bottom:48px;
+  }
+  .hero h1{
+    font-size:clamp(2rem, 5vw, 3rem);
+    margin:0 0 12px;
+    background:linear-gradient(120deg, var(--text-0), var(--gold-soft));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    letter-spacing:-0.01em;
+  }
+  .hero p{
+    color:var(--text-1);
+    font-size:1.05rem;
+    max-width:560px;
+    margin:0 auto;
+    line-height:1.55;
+  }
+
+  section.products{
+    display:flex;
+    flex-direction:column;
+    gap:28px;
+  }
+
+  /* ---------- product row ---------- */
+  .product-row{
+    padding:28px;
+    display:grid;
+    grid-template-columns:96px 1fr auto;
+    gap:24px;
+    align-items:start;
+  }
+  @media (max-width:680px){
+    .product-row{grid-template-columns:1fr;}
+    .product-row .icon-box{display:none;}
+  }
+
+  .icon-box{
+    width:96px;height:96px;
+    border-radius:var(--radius-md);
+    background:
+      radial-gradient(circle at 30% 20%, rgba(244,192,77,0.35), transparent 60%),
+      linear-gradient(160deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
+    border:1px solid var(--glass-border-hi);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:2rem;
+    color:var(--gold-soft);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.15), 0 0 24px var(--gold-glow-soft);
+    flex-shrink:0;
+  }
+
+  .product-main{min-width:0;}
+  .product-main .row-top{
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .product-main h2{
+    margin:0;
+    font-size:1.4rem;
+    letter-spacing:-0.01em;
+  }
+  .badge{
+    font-size:0.7rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--bg-0);
+    background:var(--gold-soft);
+    padding:3px 9px;
+    border-radius:999px;
+    font-weight:700;
+  }
+  .product-main .tagline{
+    color:var(--text-1);
+    margin:6px 0 0;
+    font-size:0.95rem;
+    line-height:1.5;
+  }
+
+  .fill-in{
+    color:var(--gold-soft);
+    border:1px dashed rgba(244,192,77,0.5);
+    border-radius:6px;
+    padding:1px 6px;
+    font-size:0.78em;
+    font-family:ui-monospace, SFMono-Regular, Menlo, monospace;
+    white-space:nowrap;
+  }
+
+  /* ---------- A/B demo player ---------- */
+  .ab-player{
+    margin-top:18px;
+    padding:14px 16px;
+    border-radius:var(--radius-md);
+    background:rgba(255,255,255,0.035);
+    border:1px solid var(--glass-border);
+  }
+  .ab-player .transport{
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .play-btn{
+    width:40px;height:40px;
+    border-radius:50%;
+    border:1px solid var(--glass-border-hi);
+    background:linear-gradient(160deg, rgba(244,192,77,0.28), rgba(244,192,77,0.05));
+    color:var(--gold-soft);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    font-size:1rem;
+    flex-shrink:0;
+    transition:box-shadow .2s ease, transform .15s ease;
+  }
+  .play-btn:hover{box-shadow:0 0 18px var(--gold-glow); transform:translateY(-1px);}
+  .play-btn:active{transform:translateY(0);}
+
+  .seek{
+    flex:1;
+    -webkit-appearance:none;
+    appearance:none;
+    height:4px;
+    border-radius:2px;
+    background:rgba(255,255,255,0.15);
+    outline:none;
+  }
+  .seek::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:13px;height:13px;
+    border-radius:50%;
+    background:var(--gold-soft);
+    box-shadow:0 0 8px var(--gold-glow);
+    cursor:pointer;
+  }
+  .seek::-moz-range-thumb{
+    width:13px;height:13px;
+    border:none;
+    border-radius:50%;
+    background:var(--gold-soft);
+    box-shadow:0 0 8px var(--gold-glow);
+    cursor:pointer;
+  }
+
+  .time{
+    font-variant-numeric:tabular-nums;
+    font-size:0.78rem;
+    color:var(--text-2);
+    width:78px;
+    text-align:right;
+    flex-shrink:0;
+  }
+
+  .ab-toggle{
+    margin-top:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:0;
+    background:rgba(255,255,255,0.04);
+    border:1px solid var(--glass-border);
+    border-radius:999px;
+    padding:4px;
+    width:fit-content;
+    margin-left:auto;
+    margin-right:auto;
+  }
+  .ab-toggle button{
+    border:none;
+    background:transparent;
+    color:var(--text-1);
+    padding:7px 22px;
+    border-radius:999px;
+    font-size:0.85rem;
+    font-weight:600;
+    letter-spacing:0.03em;
+    cursor:pointer;
+    transition:all .25s ease;
+  }
+  .ab-toggle button.active{
+    background:linear-gradient(160deg, var(--gold-soft), var(--gold));
+    color:#241a02;
+    box-shadow:0 0 16px var(--gold-glow);
+  }
+
+  .ab-label{
+    text-align:center;
+    font-size:0.72rem;
+    color:var(--text-2);
+    margin-top:8px;
+    letter-spacing:0.03em;
+  }
+
+  /* ---------- purchase column ---------- */
+  .purchase{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:10px;
+    min-width:150px;
+  }
+  @media (max-width:680px){
+    .purchase{align-items:stretch;}
+  }
+  .price{
+    font-size:1.3rem;
+    font-weight:700;
+    color:var(--gold-soft);
+  }
+  .buy-btn{
+    padding:11px 26px;
+    border-radius:999px;
+    border:1px solid rgba(244,192,77,0.55);
+    background:linear-gradient(160deg, rgba(244,192,77,0.9), rgba(212,159,40,0.9));
+    color:#231a03;
+    font-weight:700;
+    font-size:0.92rem;
+    letter-spacing:0.02em;
+    cursor:pointer;
+    box-shadow:0 4px 18px var(--gold-glow-soft);
+    transition:transform .15s ease, box-shadow .2s ease;
+    white-space:nowrap;
+  }
+  .buy-btn:hover{
+    transform:translateY(-2px);
+    box-shadow:0 8px 26px var(--gold-glow);
+  }
+  .buy-btn:active{transform:translateY(0);}
+
+  .learn-more{
+    font-size:0.8rem;
+    color:var(--text-2);
+    text-decoration:underline;
+    text-underline-offset:3px;
+  }
+  .learn-more:hover{color:var(--gold-soft);}
+
+  /* ---------- checkout modal ---------- */
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(4,5,6,0.7);
+    backdrop-filter:blur(6px);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+    padding:24px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-box{
+    width:min(560px, 100%);
+    max-height:88vh;
+    display:flex;
+    flex-direction:column;
+    padding:0;
+    overflow:hidden;
+  }
+  .modal-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 20px;
+    border-bottom:1px solid var(--glass-border);
+  }
+  .modal-head span{font-weight:700;}
+  .modal-close{
+    background:none;
+    border:none;
+    color:var(--text-1);
+    font-size:1.3rem;
+    cursor:pointer;
+    line-height:1;
+  }
+  .modal-close:hover{color:var(--gold-soft);}
+  .modal-body{
+    flex:1;
+    min-height:520px;
+    background:#0a0b0c;
+  }
+  .modal-body iframe{
+    width:100%;
+    height:100%;
+    min-height:520px;
+    border:none;
+  }
+  .modal-fallback{
+    padding:18px 20px;
+    font-size:0.82rem;
+    color:var(--text-2);
+    border-top:1px solid var(--glass-border);
+    text-align:center;
+  }
+  .modal-fallback a{color:var(--gold-soft); text-decoration:underline;}
+
+  footer{
+    text-align:center;
+    color:var(--text-2);
+    font-size:0.8rem;
+    margin-top:60px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="glow-blob a"></div>
+  <div class="glow-blob b"></div>
+  <div class="glow-blob c"></div>
+
+  <div class="wrap">
+
+    <header class="top glass" style="border-radius:999px; padding:14px 26px;">
+      <div class="brand"><span class="dot"></span>Sprizzle Audio</div>
+      <nav>
+        <a href="#products">Plugins</a>
+        <a href="#" class="fill-in">FILL IN: support link</a>
+      </nav>
+    </header>
+
+    <section class="hero glass">
+      <h1>VST Plugins</h1>
+      <p>Browse the collection, hear an instant before/after A/B demo, and buy straight through secure checkout.</p>
+    </section>
+
+    <section class="products" id="products">
+
+      <!-- ============================================================
+           PRODUCT ROW TEMPLATE — copy everything from
+           "PRODUCT ROW START" to "PRODUCT ROW END" to add a new plugin.
+           Search for "FILL IN" to find every spot that needs your data.
+           ============================================================ -->
+
+      <!-- PRODUCT ROW START -->
+      <article class="product-row glass" data-checkout-mode="redirect">
+
+        <div class="icon-box">
+          <!-- FILL IN: replace the emoji/text below with an <img> of your plugin icon if you have one -->
+          <span>◈</span>
+        </div>
+
+        <div class="product-main">
+          <div class="row-top">
+            <h2>NeuronLink</h2>
+            <span class="badge">New</span>
+          </div>
+          <p class="tagline">
+            <!-- FILL IN: one or two sentence plugin description -->
+            Adaptive neural saturation and harmonic modeling. Short description goes here.
+          </p>
+
+          <div class="ab-player" data-plugin="neuronlink">
+            <!-- FILL IN: point these two <audio> sources at your before/after demo files (mp3 recommended, see notes) -->
+            <audio class="audio-before" preload="auto" loop>
+              <source src="FILL-IN-path-to-before-demo.mp3" type="audio/mpeg">
+            </audio>
+            <audio class="audio-after" preload="auto" loop>
+              <source src="FILL-IN-path-to-after-demo.mp3" type="audio/mpeg">
+            </audio>
+
+            <div class="transport">
+              <button class="play-btn" type="button" aria-label="Play demo">▶</button>
+              <input type="range" class="seek" min="0" max="1000" value="0">
+              <span class="time"><span class="cur">0:00</span> / <span class="dur">0:00</span></span>
+            </div>
+
+            <div class="ab-toggle" role="group" aria-label="A/B demo switch">
+              <button type="button" class="ab-btn active" data-choice="before">Before</button>
+              <button type="button" class="ab-btn" data-choice="after">After (NeuronLink)</button>
+            </div>
+            <p class="ab-label">Same clip, playing in sync — flip A/B to hear the plugin engage instantly</p>
+          </div>
+        </div>
+
+        <div class="purchase">
+          <span class="price"><!-- FILL IN: price -->$49</span>
+          <button class="buy-btn"
+                  type="button"
+                  data-checkout-url="FILL-IN-stripe-or-nmi-checkout-url"
+                  data-embed="redirect">
+            Buy Now
+          </button>
+          <a class="learn-more fill-in" href="#">FILL IN: product page link</a>
+        </div>
+
+      </article>
+      <!-- PRODUCT ROW END -->
+
+      <!--
+        To add another plugin: duplicate the block from "PRODUCT ROW START"
+        to "PRODUCT ROW END" above, paste it below this comment, then update:
+          - icon, name, badge, tagline
+          - the two <audio><source src="..."> paths
+          - price
+          - data-checkout-url on the Buy Now button
+          - data-embed: "redirect" (safest, works with Stripe Checkout) or
+                        "iframe" (only works if your processor allows framing)
+          - the learn-more link
+        Everything else (playback, A/B sync, buy button wiring) works
+        automatically for any element with class "product-row".
+      -->
+
+    </section>
+
+    <footer>
+      <!-- FILL IN: footer text / copyright -->
+      © 2026 Sprizzle Audio. All plugins sold as-is, digital delivery only.
+    </footer>
+
+  </div>
+
+  <!-- checkout modal (used only when a Buy Now button has data-embed="iframe") -->
+  <div class="modal-overlay" id="checkoutModal">
+    <div class="modal-box glass">
+      <div class="modal-head">
+        <span>Checkout</span>
+        <button class="modal-close" id="modalClose" aria-label="Close checkout">&times;</button>
+      </div>
+      <div class="modal-body">
+        <iframe id="checkoutFrame" src="" title="Checkout"></iframe>
+      </div>
+      <div class="modal-fallback">
+        Trouble loading? <a id="modalDirectLink" href="#" target="_blank" rel="noopener">Open checkout in a new tab</a>.
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  function formatTime(sec){
+    if(!isFinite(sec) || sec < 0) sec = 0;
+    var m = Math.floor(sec / 60);
+    var s = Math.floor(sec % 60);
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  // ---- wire up every A/B demo player ----
+  document.querySelectorAll(".ab-player").forEach(function(player){
+    var before = player.querySelector(".audio-before");
+    var after  = player.querySelector(".audio-after");
+    var playBtn = player.querySelector(".play-btn");
+    var seek = player.querySelector(".seek");
+    var curEl = player.querySelector(".cur");
+    var durEl = player.querySelector(".dur");
+    var abButtons = player.querySelectorAll(".ab-btn");
+    var current = "before"; // which one is audible
+    var isPlaying = false;
+    var isSeeking = false;
+
+    // start with "after" muted, "before" audible
+    before.muted = false;
+    after.muted = true;
+
+    function setActiveLabel(choice){
+      current = choice;
+      before.muted = (choice !== "before");
+      after.muted  = (choice !== "after");
+      abButtons.forEach(function(btn){
+        btn.classList.toggle("active", btn.getAttribute("data-choice") === choice);
+      });
+    }
+
+    abButtons.forEach(function(btn){
+      btn.addEventListener("click", function(){
+        setActiveLabel(btn.getAttribute("data-choice"));
+      });
+    });
+
+    playBtn.addEventListener("click", function(){
+      if(isPlaying){
+        before.pause();
+        after.pause();
+        playBtn.textContent = "▶";
+        isPlaying = false;
+      } else {
+        // keep both in sync when starting
+        after.currentTime = before.currentTime;
+        Promise.all([before.play(), after.play()]).catch(function(){
+          // autoplay / missing-file errors are swallowed so a blank
+          // FILL-IN src doesn't throw console noise for the visitor
+        });
+        playBtn.textContent = "⏸";
+        isPlaying = true;
+      }
+    });
+
+    before.addEventListener("loadedmetadata", function(){
+      durEl.textContent = formatTime(before.duration);
+    });
+
+    before.addEventListener("timeupdate", function(){
+      if(isSeeking) return;
+      curEl.textContent = formatTime(before.currentTime);
+      if(before.duration){
+        seek.value = Math.floor((before.currentTime / before.duration) * 1000);
+      }
+      // gentle drift correction so before/after don't creep out of sync
+      if(Math.abs(before.currentTime - after.currentTime) > 0.15){
+        after.currentTime = before.currentTime;
+      }
+    });
+
+    before.addEventListener("ended", function(){
+      playBtn.textContent = "▶";
+      isPlaying = false;
+    });
+
+    seek.addEventListener("input", function(){ isSeeking = true; });
+    seek.addEventListener("change", function(){
+      if(before.duration){
+        var t = (seek.value / 1000) * before.duration;
+        before.currentTime = t;
+        after.currentTime = t;
+      }
+      isSeeking = false;
+    });
+  });
+
+  // ---- wire up every Buy Now button ----
+  var modal = document.getElementById("checkoutModal");
+  var frame = document.getElementById("checkoutFrame");
+  var directLink = document.getElementById("modalDirectLink");
+  var modalClose = document.getElementById("modalClose");
+
+  document.querySelectorAll(".buy-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var url = btn.getAttribute("data-checkout-url");
+      var mode = btn.getAttribute("data-embed") || "redirect";
+
+      if(!url || url.indexOf("FILL-IN") === 0){
+        alert("Add your Stripe/NMI checkout URL to this button's data-checkout-url attribute.");
+        return;
+      }
+
+      if(mode === "iframe"){
+        frame.src = url;
+        directLink.href = url;
+        modal.classList.add("open");
+      } else {
+        window.location.href = url;
+      }
+    });
+  });
+
+  function closeModal(){
+    modal.classList.remove("open");
+    frame.src = "";
+  }
+  modalClose.addEventListener("click", closeModal);
+  modal.addEventListener("click", function(e){
+    if(e.target === modal) closeModal();
+  });
+})();
+</script>
+
+</body>
+</html>
