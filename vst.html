@@ -511,8 +511,7 @@
           <span class="price"><!-- FILL IN: price -->$49</span>
           <button class="buy-btn"
                   type="button"
-                  data-checkout-url="FILL-IN-stripe-or-nmi-checkout-url"
-                  data-embed="redirect">
+                  data-checkout-url="FILL-IN-your-stripe-checkout-url">
             Buy Now
           </button>
           <a class="learn-more fill-in" href="#">FILL IN: product page link</a>
@@ -527,9 +526,7 @@
           - icon, name, badge, tagline
           - the two <audio><source src="..."> paths
           - price
-          - data-checkout-url on the Buy Now button
-          - data-embed: "redirect" (safest, works with Stripe Checkout) or
-                        "iframe" (only works if your processor allows framing)
+          - data-checkout-url on the Buy Now button (Stripe checkout link)
           - the learn-more link
         Everything else (playback, A/B sync, buy button wiring) works
         automatically for any element with class "product-row".
@@ -544,7 +541,14 @@
 
   </div>
 
-  <!-- checkout modal (used only when a Buy Now button has data-embed="iframe") -->
+  <!--
+    IFRAME CHECKOUT MODAL — disabled for now.
+    Stripe Checkout blocks being iframed, so all Buy Now buttons currently
+    redirect straight to the Stripe checkout URL in data-checkout-url.
+    If NMI's hosted payment page is later configured to allow framing,
+    uncomment this modal block AND the matching JS block below, then set
+    data-embed="iframe" on whichever buy-btn should use it.
+
   <div class="modal-overlay" id="checkoutModal">
     <div class="modal-box glass">
       <div class="modal-head">
@@ -559,6 +563,7 @@
       </div>
     </div>
   </div>
+  -->
 
 <script>
 (function(){
@@ -654,30 +659,41 @@
   });
 
   // ---- wire up every Buy Now button ----
+  // For now: every buy-btn redirects straight to its Stripe checkout URL.
+  // data-embed="iframe" is ignored until the iframe modal below is
+  // re-enabled (see the commented-out modal HTML above this <script>).
+  document.querySelectorAll(".buy-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var url = btn.getAttribute("data-checkout-url");
+
+      if(!url || url.indexOf("FILL-IN") === 0){
+        alert("Add your Stripe checkout URL to this button's data-checkout-url attribute.");
+        return;
+      }
+
+      window.location.href = url;
+    });
+  });
+
+  /*
+  // ---- IFRAME CHECKOUT (disabled) ----
+  // Uncomment this block along with the modal HTML above once NMI (or
+  // another processor) confirms their hosted page allows framing, then
+  // swap the redirect logic above back to the mode-aware version:
+  //
+  //   var mode = btn.getAttribute("data-embed") || "redirect";
+  //   if(mode === "iframe"){
+  //     frame.src = url;
+  //     directLink.href = url;
+  //     modal.classList.add("open");
+  //   } else {
+  //     window.location.href = url;
+  //   }
+
   var modal = document.getElementById("checkoutModal");
   var frame = document.getElementById("checkoutFrame");
   var directLink = document.getElementById("modalDirectLink");
   var modalClose = document.getElementById("modalClose");
-
-  document.querySelectorAll(".buy-btn").forEach(function(btn){
-    btn.addEventListener("click", function(){
-      var url = btn.getAttribute("data-checkout-url");
-      var mode = btn.getAttribute("data-embed") || "redirect";
-
-      if(!url || url.indexOf("FILL-IN") === 0){
-        alert("Add your Stripe/NMI checkout URL to this button's data-checkout-url attribute.");
-        return;
-      }
-
-      if(mode === "iframe"){
-        frame.src = url;
-        directLink.href = url;
-        modal.classList.add("open");
-      } else {
-        window.location.href = url;
-      }
-    });
-  });
 
   function closeModal(){
     modal.classList.remove("open");
@@ -687,6 +703,7 @@
   modal.addEventListener("click", function(e){
     if(e.target === modal) closeModal();
   });
+  */
 })();
 </script>
 
