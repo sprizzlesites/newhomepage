@@ -1242,8 +1242,8 @@ function recalcMaxScroll() {
 // --- feel knobs -------------------------------------------------------------
 const LERP = 0.3;         // free-drag glide ease per 60fps frame (higher = tighter) [your tuning]
 const WHEEL_SPEED = 2.1;  // distance covered per wheel/trackpad notch (reactivity) [your tuning]
-const TOUCH_SPEED = 4.7;  // finger-drag distance multiplier [your tuning]
-const TFLICK = 0.1;       // finger release speed (px/ms) that counts as a flick
+const TOUCH_SPEED = 3.7;  // finger-drag distance multiplier [your tuning]
+const TFLICK = 0.02;       // finger release speed (px/ms) that counts as a flick
 const SNAP_SPEED = 1;     // section-snap playback rate (1 = video's natural speed)
 // ----------------------------------------------------------------------------
 const clampScroll = v => Math.max(0, Math.min(maxScroll, v));
