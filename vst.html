@@ -39,9 +39,10 @@
   body{
     min-height:100vh;
     min-height:100dvh;
-    background:
-      radial-gradient(1200px 600px at 78% -8%, rgba(217,164,65,0.05), transparent 60%),
-      linear-gradient(180deg, var(--bg-0), var(--bg-1) 55%, var(--bg-0));
+    /* transparent so the fixed .bg-frame (hydrated scrub frame) and .bg-scrim,
+       which sit at negative z-index, are not painted over by the body's own
+       background. The gradient lives on .bg-scrim instead. */
+    background:transparent;
     color:var(--text-0);
     font-family:var(--font-sans);
     -webkit-font-smoothing:antialiased;
@@ -865,18 +866,43 @@
     }
     return sharedCtx;
   }
-  // iOS/Safari only start audio if the context is resumed inside a user gesture;
-  // unlock synchronously on first interaction, before any async decode resolves.
+  // On iOS, Web Audio is (a) suspended until resumed inside a user gesture and
+  // (b) silenced by the physical ring/silent switch UNLESS a media element is
+  // also playing. So on first interaction we resume the context AND start a
+  // tiny looping silent <audio>, which flips iOS into playback mode and lets
+  // the Web Audio graph sound through the mute switch. (Same trick howler.js uses.)
+  var silentEl = null;
+  function makeSilentAudio(){
+    try {
+      var sr = 8000, n = sr / 2;                 // 0.5s of 8-bit mono silence
+      var buf = new ArrayBuffer(44 + n), dv = new DataView(buf);
+      var w = function(o, s){ for(var i=0;i<s.length;i++) dv.setUint8(o+i, s.charCodeAt(i)); };
+      w(0,"RIFF"); dv.setUint32(4, 36+n, true); w(8,"WAVE"); w(12,"fmt ");
+      dv.setUint32(16,16,true); dv.setUint16(20,1,true); dv.setUint16(22,1,true);
+      dv.setUint32(24,sr,true); dv.setUint32(28,sr,true); dv.setUint16(32,1,true); dv.setUint16(34,8,true);
+      w(36,"data"); dv.setUint32(40,n,true);
+      for(var i=0;i<n;i++) dv.setUint8(44+i, 128); // 128 = silence for unsigned 8-bit
+      var a = new Audio();
+      a.loop = true; a.preload = "auto"; a.setAttribute("playsinline","");
+      a.src = URL.createObjectURL(new Blob([buf], { type:"audio/wav" }));
+      return a;
+    } catch(_){ return null; }
+  }
   function unlockCtx(){
     var c = getCtx();
-    if(!c) return;
-    if(c.state === "suspended") c.resume();
+    if(c){
+      if(c.state === "suspended") c.resume();
+      if(!ctxUnlocked){
+        try {
+          var b = c.createBuffer(1, 1, 22050);
+          var s = c.createBufferSource();
+          s.buffer = b; s.connect(c.destination); s.start(0);
+        } catch(_){}
+      }
+    }
     if(!ctxUnlocked){
-      try {
-        var b = c.createBuffer(1, 1, 22050);
-        var s = c.createBufferSource();
-        s.buffer = b; s.connect(c.destination); s.start(0);
-      } catch(_){}
+      if(!silentEl) silentEl = makeSilentAudio();
+      if(silentEl){ var pr = silentEl.play(); if(pr && pr.catch) pr.catch(function(){}); }
       ctxUnlocked = true;
     }
   }
@@ -1175,7 +1201,7 @@
     }
   })();
 
-  // ---- liquid-glass parallax + specular (pointer on desktop, gyro on mobile) ----
+  // ---- liquid-glass parallax + specular (pointer-driven, desktop only) ----
   var hoverMQ = matchMedia("(hover: hover)");
   var reducedMotionMQ = matchMedia("(prefers-reduced-motion: reduce)");
   var reduced = function(){ return reducedMotionMQ.matches; };
@@ -1215,38 +1241,6 @@
         var st = panelState[idx]; st.tX = 0; st.tY = 0; st.tR = 0;
       });
     });
-  }
-
-  // mobile: device-orientation (gyro) drives the same tilt + specular for every
-  // panel, so the whole stack of glass leans as you physically tilt the phone.
-  var gyroActive = false;
-  function onOrient(e){
-    if(reduced() || (e.gamma == null && e.beta == null)) return;
-    gyroActive = true;
-    var gx = clamp1((e.gamma || 0) / 32);          // left/right lean
-    var gy = clamp1(((e.beta || 0) - 45) / 32);    // fwd/back around a ~45° hold
-    for(var i = 0; i < panelState.length; i++){
-      var st = panelState[i];
-      st.tX = gx * 9; st.tY = gy * 9; st.tR = gx * 1.3;
-    }
-    setSpec(50 + gx * 46, 50 + gy * 46);
-  }
-  function attachGyro(){
-    if(gyroActive || typeof DeviceOrientationEvent === "undefined") return;
-    window.addEventListener("deviceorientation", onOrient);
-  }
-  if(!hoverMQ.matches){
-    if(typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function"){
-      // iOS 13+: permission must be requested from a user gesture
-      window.addEventListener("touchend", function once(){
-        window.removeEventListener("touchend", once);
-        DeviceOrientationEvent.requestPermission().then(function(state){
-          if(state === "granted") attachGyro();
-        }).catch(function(){});
-      }, { passive:true });
-    } else {
-      attachGyro();
-    }
   }
 
   (function tiltLoop(){
