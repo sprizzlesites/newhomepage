@@ -541,7 +541,7 @@
       <div class="brand"> <!--<span class="dot"> --> </span>Sprizzle Audio</div>
       <nav>
         <a href="#products">Plugins</a>
-        <a href="#" class="fill-in">FILL IN: support link</a>
+        <a href="mailto:spryte@sprizzle.io" class="fill-in">ORDER HELP: Spryte@Sprizzle.io</a>
       </nav>
     </header>
 
@@ -607,7 +607,7 @@
                   data-checkout-url="FILL-IN-your-stripe-checkout-url">
             Buy Now
           </button>
-          <a class="learn-more fill-in" href="#">FILL IN: product page link</a>
+          <!-- FOR WHEN PRODUCT PAGES ARE DONE <a class="learn-more fill-in" href="#">FILL IN: product page link</a> -->
         </div>
 
       </article>
@@ -760,7 +760,7 @@
       var url = btn.getAttribute("data-checkout-url");
 
       if(!url || url.indexOf("FILL-IN") === 0){
-        alert("Add your Stripe checkout URL to this button's data-checkout-url attribute.");
+        alert("payment not yet available at this time, email support to purchase. future checkout will be connected to this button's data-checkout-url attribute.");
         return;
       }
 
