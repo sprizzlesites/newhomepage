@@ -712,10 +712,19 @@
         <span class="mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h2.5l2-6 4 16 3-13 2 5H21"/></svg>
         </span>
-        <a href="#" onclick="history.back(); return false;">
+        <a href="#" id="back-link">
         <img class="brand-logo" src="assets/favicon.svg" alt="Sprizzle">
         </a>
         <span>Audio</span>
+        <script>
+document.getElementById('back-link').addEventListener('click', function(event) {
+    // Prevent the default behavior of jumping to the top of the page (#)
+    event.preventDefault(); 
+    
+    // Trigger the native browser back action
+    window.history.back(); 
+});
+</script>
       </div>
       <nav> <!--old mailto:spryte@sprizzle.io-->
         <a href="https://mail.google.com/mail/u/0/?fs=1&tf=cm&source=mailto&to=spryte@sprizzle.io" class="nav-mail">
