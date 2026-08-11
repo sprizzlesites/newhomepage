@@ -747,6 +747,199 @@ document.getElementById('back-link').addEventListener('click', function(event) {
            "PRODUCT ROW START" to "PRODUCT ROW END" to add a new plugin.
            Search for "FILL IN" to find every spot that needs your data.
            ============================================================ -->
+ <!-- 1st PRODUCT ROW START -->
+      <article class="product-row glass" data-checkout-mode="redirect">
+
+        <div class="icon-box">
+          <!-- FILL IN: swap this <img> for your plugin icon (a square image looks best) -->
+          <img src="assets/plugins/Demoncore2picture.PNG" alt="DC II plugin icon" width="96" height="96">
+        </div>
+<div class="icon-box">
+          <!-- FILL IN: swap this <img> for your plugin icon (a square image looks best) -->
+          <img src="assets/plugins/Demoncore2 expanded.PNG" alt="DC II plugin icon" width="96" height="96">
+        </div>
+        <div class="product-main">
+          <div class="row-top">
+            <h2>DEMON CORE II</h2>
+            <span class="badge">New</span>
+          </div>
+          <p class="tagline">
+            <!-- FILL IN: one or two sentence plugin description -->
+            Talkbox-style vocal resynthesis and ML-backed auto-harmonization.
+          </p>
+
+          <!-- data-wet = display name for the processed signal (used in the blend labels) -->
+          <div class="ab-player" data-plugin="demoncore2" data-wet="DemonCore2">
+            <!-- FILL IN: point these two <audio> sources at your dry/processed demo files -->
+            <audio class="audio-before" preload="none" loop>
+              <source src="vsts/neuronlink/BEFORENEURALINK.mp3" type="audio/mpeg">
+            </audio>
+            <audio class="audio-after" preload="none" loop>
+              <source src="vsts/neuronlink/AFTERNEURALINK.mp3" type="audio/mpeg">
+            </audio>
+
+            <div class="transport">
+              <button class="play-btn" type="button" aria-label="Play demo">
+                <svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.14v13.72a1 1 0 0 0 1.53.85l10.79-6.86a1 1 0 0 0 0-1.7L9.53 4.29A1 1 0 0 0 8 5.14Z"/></svg>
+                <svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h3v16H7zM14 4h3v16h-3z"/></svg>
+              </button>
+              <input type="range" class="seek" min="0" max="1000" value="0" aria-label="Seek demo playback">
+              <span class="time"><span class="cur">0:00</span> / <span class="dur">0:00</span></span>
+            </div>
+
+            <div class="blend">
+              <div class="blend-head">
+                <span class="blend-side blend-dry is-active">Dry</span>
+                <span class="blend-mix"><b class="wetpct">0</b>% processed</span>
+                <span class="blend-side blend-wet">DEMON CORE</span>
+              </div>
+              <input type="range" class="blend-range" min="0" max="100" value="0" aria-label="Blend from dry to processed signal">
+              <p class="blend-hint">Drag to blend the raw signal against Demon Core II — both stems stay perfectly in sync.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="purchase">
+          <span class="price"><!-- FILL IN: price -->$300</span>
+          <button class="buy-btn"
+                  type="button"
+                  data-checkout-url="FILL-IN-your-stripe-checkout-url">
+            Buy Now
+          </button>
+          <!-- FOR WHEN PRODUCT PAGES ARE DONE <a class="learn-more fill-in" href="#">FILL IN: product page link</a> -->
+        </div>
+
+      </article>
+      <!-- PRODUCT ROW END -->
+
+      <!-- PRODUCT ROW START -->
+      <article class="product-row glass" data-checkout-mode="redirect">
+
+        <div class="icon-box">
+          <!-- FILL IN: swap this <img> for your plugin icon (a square image looks best) -->
+          <img src="assets/plugins/dextrodelaypicture.PNG" alt="NeuronLink plugin icon" width="96" height="96">
+        </div>
+
+        <div class="product-main">
+          <div class="row-top">
+            <h2>DEXTRO DELAY</h2>
+            <span class="badge">New</span>
+          </div>
+          <p class="tagline">
+            <!-- FILL IN: one or two sentence plugin description -->
+            Tired of routing sidechain buses? This delay sidechains itself like a good little bot. Inspired by NyQuil
+          </p>
+
+          <!-- data-wet = display name for the processed signal (used in the blend labels) -->
+          <div class="ab-player" data-plugin="dextrodelay" data-wet="DextroDelay">
+            <!-- FILL IN: point these two <audio> sources at your dry/processed demo files -->
+            <audio class="audio-before" preload="none" loop>
+              <source src="vsts/neuronlink/BEFORENEURALINK.mp3" type="audio/mpeg">
+            </audio>
+            <audio class="audio-after" preload="none" loop>
+              <source src="vsts/neuronlink/AFTERNEURALINK.mp3" type="audio/mpeg">
+            </audio>
+
+            <div class="transport">
+              <button class="play-btn" type="button" aria-label="Play demo">
+                <svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.14v13.72a1 1 0 0 0 1.53.85l10.79-6.86a1 1 0 0 0 0-1.7L9.53 4.29A1 1 0 0 0 8 5.14Z"/></svg>
+                <svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h3v16H7zM14 4h3v16h-3z"/></svg>
+              </button>
+              <input type="range" class="seek" min="0" max="1000" value="0" aria-label="Seek demo playback">
+              <span class="time"><span class="cur">0:00</span> / <span class="dur">0:00</span></span>
+            </div>
+
+            <div class="blend">
+              <div class="blend-head">
+                <span class="blend-side blend-dry is-active">Dry</span>
+                <span class="blend-mix"><b class="wetpct">0</b>% processed</span>
+                <span class="blend-side blend-wet">DEXTRO DELAY</span>
+              </div>
+              <input type="range" class="blend-range" min="0" max="100" value="0" aria-label="Blend from dry to processed signal">
+              <p class="blend-hint">Drag to blend the raw signal against Dextro Delay — both stems stay perfectly in sync.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="purchase">
+          <span class="price"><!-- FILL IN: price -->FREE</span>
+          <button class="buy-btn"
+                  type="button"
+                  data-checkout-url="FILL-IN-your-stripe-checkout-url">
+            Download Now
+          </button>
+          <!-- FOR WHEN PRODUCT PAGES ARE DONE <a class="learn-more fill-in" href="#">FILL IN: product page link</a> -->
+        </div>
+
+      </article>
+      <!-- PRODUCT ROW END -->
+
+      
+<!-- PRODUCT ROW START -->
+      <article class="product-row glass" data-checkout-mode="redirect">
+
+        <div class="icon-box">
+          <!-- FILL IN: swap this <img> for your plugin icon (a square image looks best) -->
+          <img src="assets/plugins/demoncore1 blue.PNG" alt="NLDemon Core plugin icon" width="96" height="96">
+        </div>
+<div class="icon-box">
+          <!-- FILL IN: swap this <img> for your plugin icon (a square image looks best) -->
+          <img src="assets/plugins/demoncore1 red.PNG" alt="NLDemon Core plugin icon" width="96" height="96">
+        </div>
+        
+        <div class="product-main">
+          <div class="row-top">
+            <h2>NeuronLink Demon Core</h2>
+            <span class="badge">New</span>
+          </div>
+          <p class="tagline">
+            <!-- FILL IN: one or two sentence plugin description -->
+            Use machine learning in "DEMON MODE" to predict & generate harmonies while feeding each voice through its own instance of Neuralink.
+          </p>
+
+          <!-- data-wet = display name for the processed signal (used in the blend labels) -->
+          <div class="ab-player" data-plugin="demon mode" data-wet="DEMON MODE">
+            <!-- FILL IN: point these two <audio> sources at your dry/processed demo files -->
+            <audio class="audio-before" preload="none" loop>
+              <source src="vsts/neuronlink/BEFORENEURALINK.mp3" type="audio/mpeg">
+            </audio>
+            <audio class="audio-after" preload="none" loop>
+              <source src="vsts/neuronlink/AFTERNEURALINK.mp3" type="audio/mpeg">
+            </audio>
+
+            <div class="transport">
+              <button class="play-btn" type="button" aria-label="Play demo">
+                <svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.14v13.72a1 1 0 0 0 1.53.85l10.79-6.86a1 1 0 0 0 0-1.7L9.53 4.29A1 1 0 0 0 8 5.14Z"/></svg>
+                <svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h3v16H7zM14 4h3v16h-3z"/></svg>
+              </button>
+              <input type="range" class="seek" min="0" max="1000" value="0" aria-label="Seek demo playback">
+              <span class="time"><span class="cur">0:00</span> / <span class="dur">0:00</span></span>
+            </div>
+
+            <div class="blend">
+              <div class="blend-head">
+                <span class="blend-side blend-dry is-active">Dry</span>
+                <span class="blend-mix"><b class="wetpct">0</b>% processed</span>
+                <span class="blend-side blend-wet">DEMON MODE</span>
+              </div>
+              <input type="range" class="blend-range" min="0" max="100" value="0" aria-label="Blend from dry to processed signal">
+              <p class="blend-hint">Drag to blend the raw signal against NeuronLink — both stems stay perfectly in sync.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="purchase">
+          <span class="price"><!-- FILL IN: price -->$125</span>
+          <button class="buy-btn"
+                  type="button"
+                  data-checkout-url="FILL-IN-your-stripe-checkout-url">
+            Buy Now
+          </button>
+          <!-- FOR WHEN PRODUCT PAGES ARE DONE <a class="learn-more fill-in" href="#">FILL IN: product page link</a> -->
+        </div>
+
+      </article>
+      <!-- PRODUCT ROW END -->
 
       <!-- PRODUCT ROW START -->
       <article class="product-row glass" data-checkout-mode="redirect">
@@ -798,7 +991,7 @@ document.getElementById('back-link').addEventListener('click', function(event) {
         </div>
 
         <div class="purchase">
-          <span class="price"><!-- FILL IN: price -->$250</span>
+          <span class="price"><!-- FILL IN: price -->$50</span>
           <button class="buy-btn"
                   type="button"
                   data-checkout-url="FILL-IN-your-stripe-checkout-url">
