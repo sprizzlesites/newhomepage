@@ -264,7 +264,19 @@
     gap:24px;
     align-items:start;
   }
+  /* Every .icon-box carries the same named area, so two of them would land in
+     the same cell and stack. The script groups them into .icon-stack, which
+     takes the area and lays them out down the column; this rule stays as the
+     no-JS fallback. */
   .icon-box{grid-area:icon;}
+  .icon-stack{
+    grid-area:icon;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    min-width:0;
+  }
+  .icon-stack .icon-box{grid-area:auto;}
   .product-main{grid-area:main;}
   .purchase{grid-area:buy;}
   @media (max-width:680px){
@@ -299,6 +311,90 @@
   }
   @media (max-width:680px){
     .icon-box{width:60px;height:60px;font-size:1.4rem;}
+  }
+  /* an icon that opens the lightbox gets an affordance so it reads as clickable */
+  .icon-box.is-zoomable{
+    cursor:zoom-in;
+    transition:border-color .2s ease, transform .18s ease;
+  }
+  .icon-box.is-zoomable:hover{
+    border-color:var(--glass-border-hi);
+    transform:translateY(-2px);
+  }
+  .icon-box.is-zoomable:focus-visible{
+    outline:2px solid var(--gold);
+    outline-offset:3px;
+  }
+
+  /* ---------- image lightbox ---------- */
+  .lightbox{
+    position:fixed;
+    inset:0;
+    z-index:300;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:clamp(16px, 5vw, 48px);
+    background:rgba(6,7,9,0.72);
+    -webkit-backdrop-filter:blur(14px);
+    backdrop-filter:blur(14px);
+    opacity:0;
+    transition:opacity .22s ease;
+  }
+  .lightbox.is-open{display:flex;}
+  .lightbox.is-shown{opacity:1;}
+  .lightbox-panel{
+    position:relative;
+    max-width:min(920px, 100%);
+    max-height:100%;
+    padding:10px;
+    border-radius:var(--radius-lg);
+    border:1px solid var(--glass-border-hi);
+    background:color-mix(in oklab, var(--bg-1) 78%, transparent);
+    box-shadow:0 24px 70px rgba(0,0,0,0.6);
+    transform:scale(.97);
+    transition:transform .22s ease;
+  }
+  .lightbox.is-shown .lightbox-panel{transform:scale(1);}
+  .lightbox-panel img{
+    display:block;
+    max-width:100%;
+    max-height:calc(100vh - clamp(52px, 10vw, 116px));
+    width:auto;height:auto;
+    border-radius:calc(var(--radius-lg) - 6px);
+  }
+  .lightbox-close{
+    position:absolute;
+    top:-14px;right:-14px;
+    width:34px;height:34px;
+    border-radius:50%;
+    border:1px solid var(--glass-border-hi);
+    background:var(--bg-1);
+    color:var(--text-0);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    font-size:1.1rem;
+    line-height:1;
+    box-shadow:0 4px 14px rgba(0,0,0,0.5);
+    transition:background-color .2s ease;
+  }
+  .lightbox-close:hover{background:#22262c;}
+  .lightbox-caption{
+    margin:9px 2px 1px;
+    text-align:center;
+    font-size:0.76rem;
+    color:var(--text-2);
+  }
+  @media (max-width:680px){
+    .lightbox-close{top:-10px;right:-10px;width:30px;height:30px;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .lightbox,.lightbox-panel{transition:none;}
+    .lightbox-panel{transform:none;}
+    .icon-box.is-zoomable{transition:none;}
+    .icon-box.is-zoomable:hover{transform:none;}
   }
 
   .product-main{min-width:0;}
@@ -1027,6 +1123,17 @@ document.getElementById('back-link').addEventListener('click', function(event) {
   <!-- lightweight non-blocking toast (replaces the old alert) -->
   <div class="toast glass" id="toast" role="status" aria-live="polite"></div>
 
+  <!-- image lightbox: click any product image to enlarge it in place. Deliberately
+       not .glass — the glass panels get a pointer-parallax transform, which would
+       fight this panel's centring. -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Enlarged plugin image">
+    <div class="lightbox-panel" id="lightboxPanel">
+      <button class="lightbox-close" id="lightboxClose" type="button" aria-label="Close image">&times;</button>
+      <img id="lightboxImg" src="" alt="">
+      <p class="lightbox-caption" id="lightboxCaption"></p>
+    </div>
+  </div>
+
   <!--
     IFRAME CHECKOUT MODAL — disabled for now.
     Stripe Checkout blocks being iframed, so all Buy Now buttons currently
@@ -1371,6 +1478,105 @@ document.getElementById('back-link').addEventListener('click', function(event) {
     if(e.target === modal) closeModal();
   });
   */
+
+  // ---- group each row's icon boxes so multiple images stack down the column ----
+  // Every .icon-box is assigned the same named grid area, so pasting a second one
+  // drops it in the same cell as the first and only the last stays visible. Wrap
+  // whatever boxes a row has in a single .icon-stack, which takes the grid area
+  // and lays them out vertically — so adding an image stays a copy-paste job.
+  document.querySelectorAll(".product-row").forEach(function(row){
+    var boxes = Array.prototype.filter.call(row.children, function(el){
+      return el.classList && el.classList.contains("icon-box");
+    });
+    if(!boxes.length) return;
+    var stack = document.createElement("div");
+    stack.className = "icon-stack";
+    boxes[0].before(stack);                       // keep the column's original position
+    boxes.forEach(function(bx){ stack.appendChild(bx); });
+  });
+
+  // ---- image lightbox ----
+  // Clicking a product image opens it enlarged in a panel over the page (not a new
+  // tab, not the Fullscreen API); clicking anywhere outside the picture closes it.
+  var lightbox = document.getElementById("lightbox");
+  var lbPanel = document.getElementById("lightboxPanel");
+  var lbImg = document.getElementById("lightboxImg");
+  var lbCaption = document.getElementById("lightboxCaption");
+  var lbClose = document.getElementById("lightboxClose");
+  var lbReturnFocus = null;
+  var lbScrollY = 0;
+
+  function openLightbox(src, caption, opener){
+    if(!lightbox) return;
+    lbReturnFocus = opener || null;
+    lbImg.src = src;
+    lbImg.alt = (opener && opener.querySelector("img") && opener.querySelector("img").alt) || "";
+    lbCaption.textContent = caption || "";
+    lbCaption.hidden = !caption;
+
+    // Lock the page behind the overlay. position:fixed rather than overflow:hidden
+    // so iOS doesn't scroll the body underneath while the lightbox is up.
+    lbScrollY = window.scrollY;
+    var sbw = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.position = "fixed";
+    document.body.style.top = -lbScrollY + "px";
+    document.body.style.width = "100%";
+    if(sbw > 0) document.body.style.paddingRight = sbw + "px";
+
+    lightbox.classList.add("is-open");
+    requestAnimationFrame(function(){ lightbox.classList.add("is-shown"); });
+    lbClose.focus();
+  }
+
+  function closeLightbox(){
+    if(!lightbox || !lightbox.classList.contains("is-open")) return;
+    lightbox.classList.remove("is-shown");
+
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.width = "";
+    document.body.style.paddingRight = "";
+    window.scrollTo(0, lbScrollY);
+
+    var done = function(){
+      lightbox.classList.remove("is-open");
+      lbImg.src = "";
+      if(lbReturnFocus && lbReturnFocus.focus) lbReturnFocus.focus();
+      lbReturnFocus = null;
+    };
+    // wait out the fade, but never strand the overlay if the transition doesn't fire
+    var fired = false;
+    lightbox.addEventListener("transitionend", function once(e){
+      if(e.target !== lightbox || fired) return;
+      fired = true; lightbox.removeEventListener("transitionend", once); done();
+    });
+    setTimeout(function(){ if(!fired){ fired = true; done(); } }, 320);
+  }
+
+  document.querySelectorAll(".icon-box").forEach(function(box){
+    var img = box.querySelector("img");
+    if(!img) return;
+    box.classList.add("is-zoomable");
+    box.setAttribute("role", "button");
+    box.setAttribute("tabindex", "0");
+    box.setAttribute("aria-label", "Enlarge image" + (img.alt ? ": " + img.alt : ""));
+    // caption: data-caption on the <img> if you want one, else none. (alt stays
+    // the screen-reader text; it's usually phrased for that, not for display.)
+    var open = function(){ openLightbox(img.currentSrc || img.src, img.dataset.caption || "", box); };
+    box.addEventListener("click", open);
+    box.addEventListener("keydown", function(e){
+      if(e.key === "Enter" || e.key === " "){ e.preventDefault(); open(); }
+    });
+  });
+
+  // click outside the picture closes; clicks on the panel itself do not
+  lightbox.addEventListener("click", function(e){
+    if(!lbPanel.contains(e.target)) closeLightbox();
+  });
+  lbClose.addEventListener("click", closeLightbox);
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape") closeLightbox();
+  });
 
   // ---- liquid-lens displacement map (cloned from index.html) ----
   // Draws a 256x256 map: neutral gray at center, R/G channels ramp toward the
