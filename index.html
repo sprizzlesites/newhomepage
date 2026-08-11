@@ -1127,9 +1127,17 @@ const framePath = (dir, i) => `${dir}/f${String(i + 1).padStart(4, '0')}.webp`;
 // createImageBitmap decodes OFF the main thread, so drawing is always an
 // instant GPU blit of an already-decoded bitmap — no decode in the hot path,
 // and memory stays bounded (unlike holding all ~900 frames decoded).
-const CACHE_MAX = 80;      // decoded frames held (~1.3s @60fps, ~295MB @720p) — tune for memory
-const AHEAD = 40;          // frames to warm ahead in the travel direction (~0.67s @60fps)
-const BEHIND = 16;         // frames to keep warm behind (for reverse scrub)
+// An ImageBitmap costs w*h*4 bytes (~3.5MB at either source size), so a flat
+// 80-frame window sits near 280MB. Desktop absorbs that; a phone does not, and
+// the GC pressure it creates lands as stutter in the middle of a drag. Budget by
+// BYTES and derive the window from it. The values below are ceilings, so desktop
+// still resolves to exactly the tuned 80 / 40 / 16.
+// (pointer:coarse) rather than a width query — a phone is a phone in landscape
+// too, where a width test would quietly hand it the full desktop budget.
+const CACHE_BUDGET = (matchMedia('(pointer: coarse)').matches || compactMQ.matches ? 160 : 288) * 1024 * 1024;
+let CACHE_MAX = 80;        // decoded frames held — recomputed per sequence
+let AHEAD = 40;            // frames to warm ahead in the travel direction
+let BEHIND = 16;           // frames to keep warm behind (for reverse scrub)
 const MAX_INFLIGHT = 4;    // concurrent off-thread decodes (kept modest so decode
                            // work never crowds the main thread on weak GPUs)
 const canBitmap = typeof createImageBitmap === 'function';
@@ -1153,6 +1161,10 @@ function loadSequence(key) {
   for (const b of bitmaps.values()) b.close();
   bitmaps.clear(); pending.clear();
   const meta = SEQ[key];
+  const frameBytes = meta.w * meta.h * 4;
+  CACHE_MAX = Math.min(80, Math.max(12, Math.floor(CACHE_BUDGET / frameBytes)));
+  AHEAD  = Math.min(40, Math.max(6, Math.round(CACHE_MAX * 0.6)));
+  BEHIND = Math.min(16, Math.max(3, Math.round(CACHE_MAX * 0.2)));
   canvas.width = meta.w;
   canvas.height = meta.h;
   frames = new Array(meta.n);
@@ -1214,13 +1226,18 @@ function paint(idx) {
 
 // Prefer the exact frame (decoded bitmap, else source image); if neither is
 // ready yet, blit the nearest ready frame so the background never blanks.
+// Search radius for that fallback. The scrub now retries every frame until the
+// exact frame lands, so this runs in the hot path — bounded so a cold sequence
+// can't scan the whole ~900-entry array per tick. Past this distance the
+// neighbour would be the wrong shot anyway; holding the last paint reads better.
+const NEAR_MAX = 150;
 function drawFrame(i) {
   if (bitmaps.has(i) || loadedFlags[i]) { paint(i); if (!bitmaps.has(i)) requestBitmap(i); return; }
-  let lo = i - 1, hi = i + 1;
-  while (lo >= 0 || hi < frames.length) {
+  for (let d = 1; d <= NEAR_MAX; d++) {
+    const lo = i - d, hi = i + d;
     if (lo >= 0 && (bitmaps.has(lo) || loadedFlags[lo])) { paint(lo); return; }
     if (hi < frames.length && (bitmaps.has(hi) || loadedFlags[hi])) { paint(hi); return; }
-    lo--; hi++;
+    if (lo < 0 && hi >= frames.length) return;
   }
 }
 
@@ -1313,7 +1330,12 @@ window.addEventListener('keydown', e => {
 
 // If anything else moves the page (scrollbar drag, find-in-page), adopt it —
 // but ignore our own per-frame scrollTo, which stays within a px of smoothScroll.
+// While a finger is down or a snap is running we own the position outright: iOS
+// clamps and defers programmatic scrollTo during a touch, so window.scrollY can
+// trail smoothScroll by far more than 2px, and adopting it would snatch the
+// scrub backwards mid-drag — which reads as the background jumping.
 window.addEventListener('scroll', () => {
+  if (touchY !== null || snap.active) return;
   if (Math.abs(window.scrollY - smoothScroll) > 2) targetScroll = smoothScroll = window.scrollY;
 }, { passive: true });
 
@@ -1591,6 +1613,13 @@ function tick(ts) {
     smoothScroll = clampScroll(progressForTime(vt, activeSource) * maxScroll);
     targetScroll = smoothScroll;              // so the glide doesn't fight it after
     if (e >= 1) snap.active = false;
+  } else if (touchY !== null) {
+    // Finger down: track it 1:1. The eased glide below is what makes a drag feel
+    // laggy and uneven — its per-frame step is a function of dt, so every decode
+    // hitch changes how far the scrub travels that frame, and the footage stops
+    // tracking the finger. Following the finger exactly removes the lag and that
+    // coupling in one go; the glide still handles wheel input and post-release.
+    smoothScroll = targetScroll;
   } else {
     const k = 1 - Math.pow(1 - LERP, dt * 60);
     smoothScroll += (targetScroll - smoothScroll) * k;
@@ -1612,7 +1641,12 @@ function tick(ts) {
   const frame = Math.min(SEQ[activeSource].n - 1, Math.max(0, Math.round(cur * SRC_FPS)));
   const dir = frame >= lastWrittenFrame ? 1 : -1; // travel direction for prefetch
   prefetch(frame, dir);
-  if (frame !== lastWrittenFrame) {
+  // Repaint when the playhead moves, and also whenever the canvas is still
+  // showing a fallback neighbour rather than the frame we actually want. Without
+  // the second test a frame that finishes decoding while the finger is holding
+  // still never reaches the canvas — the scrub sticks, then jumps a whole batch
+  // the moment the index finally ticks over.
+  if (frame !== lastWrittenFrame || drawnFrame !== frame) {
     lastWrittenFrame = frame;
     drawFrame(frame);
   }
