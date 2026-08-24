@@ -404,9 +404,15 @@ img,video{max-width:100%;display:block;}
   transition:opacity .32s var(--ease),transform .32s var(--ease);
 }
 .zone-title{
-  font-size:clamp(1.6rem,3vw,2.2rem);
-  font-weight:400;
-  letter-spacing:-.01em;
+  /* Matches the boot-veil "SPRIZZLE" flash. That word is the same typeface as
+     everything else (--font-sans, no webfonts on this page) — what gives it its
+     look is the treatment: caps, wide .14em tracking, medium weight. Tracking
+     that wide eats horizontal room, so the max size comes down a little to keep
+     the longer titles on one line; caps read larger anyway, so presence holds. */
+  font-size:clamp(1.35rem,2.5vw,1.85rem);
+  font-weight:500;
+  letter-spacing:.14em;
+  text-transform:uppercase;
   margin-bottom:12px;
   opacity:0;
   transform:translateY(8px);
