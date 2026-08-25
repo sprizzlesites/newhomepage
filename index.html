@@ -1472,18 +1472,6 @@ window.addEventListener('pointermove', e => {
 });
 nav.addEventListener('focusin', () => nav.classList.remove('nav--hidden'));
 
-// The nav rides with the cards rather than only answering scroll direction:
-// it comes up for every zone the card is on screen for, and tucks away during
-// the transitions between them — so it pops up above each card on the way down,
-// not just when you scroll back.
-function inCardDwell(p) {
-  for (let n = 1; n <= 5; n++) {
-    const [a, b] = ZONE_DWELL[n];
-    if (p >= a && p <= b) return true;
-  }
-  return false;
-}
-
 function updateNav(scrollY, p) {
   const delta = scrollY - lastScrollY;
   const navHasFocus = nav.contains(document.activeElement);
@@ -1491,7 +1479,7 @@ function updateNav(scrollY, p) {
   // flat 24 meant under 5px of finger travel hid the nav. Scale it to the
   // viewport so it takes a deliberate gesture on any device.
   const hideAfter = Math.max(64, window.innerHeight * 0.12);
-  if (performance.now() < navHoldUntil || scrollY < 40 || pointerNearTop || navHasFocus || inCardDwell(p)) {
+  if (performance.now() < navHoldUntil || scrollY < 40 || pointerNearTop || navHasFocus) {
     hideAccum = 0;
     nav.classList.remove('nav--hidden');
   } else if (delta < 0) {
