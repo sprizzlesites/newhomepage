@@ -1303,9 +1303,20 @@ portraitMQ.addEventListener('change', e => loadSequence(e.matches ? 'mobile' : '
 loadSequence(activeSource);
 
 function recalcMaxScroll() {
+  const prev = maxScroll;
   maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-  targetScroll = clampScroll(targetScroll);
-  smoothScroll = clampScroll(smoothScroll);
+  // Rescale by PROGRESS, not pixels. A jump's target is set as p * maxScroll, so
+  // when the mobile URL bar collapses mid-glide innerHeight shrinks, maxScroll
+  // grows, and that same pixel target silently becomes an earlier point in the
+  // footage — the jump lands short of the card through no fault of the glide.
+  if (prev > 1 && maxScroll !== prev) {
+    const k = maxScroll / prev;
+    targetScroll = clampScroll(targetScroll * k);
+    smoothScroll = clampScroll(smoothScroll * k);
+  } else {
+    targetScroll = clampScroll(targetScroll);
+    smoothScroll = clampScroll(smoothScroll);
+  }
 }
 
 /* ---------- virtual smooth-scroll + section snap ---------- */
@@ -1392,8 +1403,15 @@ window.addEventListener('keydown', e => {
 // clamps and defers programmatic scrollTo during a touch, so window.scrollY can
 // trail smoothScroll by far more than 2px, and adopting it would snatch the
 // scrub backwards mid-drag — which reads as the background jumping.
+// A glide counts too. A nav-dot jump sets a far-away target and eases toward it
+// over ~20 frames; anything that moves the page in that window — on iOS, the URL
+// bar sliding as the page scrolls — fires a scroll event that disagrees with
+// smoothScroll, and adopting it collapses target onto current, ending the glide
+// wherever it happened to be. That is the "jumps in a bit early, and inches
+// closer every time you click again" behaviour.
 window.addEventListener('scroll', () => {
   if (touchY !== null || snap.active) return;
+  if (Math.abs(targetScroll - smoothScroll) > 1) return;   // glide in flight — we own the position
   if (Math.abs(window.scrollY - smoothScroll) > 2) targetScroll = smoothScroll = window.scrollY;
 }, { passive: true });
 
