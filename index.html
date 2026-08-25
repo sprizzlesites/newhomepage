@@ -1462,7 +1462,7 @@ if (hoverMQ.matches && !reduced()) {
 
 /* ---------- nav auto-hide ---------- */
 let lastScrollY = window.scrollY;
-let hideAccum = 0;
+let lastMoveAt = 0;     // last time the scrub was actually moving
 let pointerNearTop = false;
 let navHoldUntil = 0;   // keep the nav up through a jump it triggered itself
 // Mouse only: a touch fires pointermove too, so tapping near the top used to
@@ -1472,22 +1472,23 @@ window.addEventListener('pointermove', e => {
 });
 nav.addEventListener('focusin', () => nav.classList.remove('nav--hidden'));
 
+// Nav follows motion, nothing else: moving in either direction tucks it away,
+// and it comes back once the scrub has been still for a beat — wherever in the
+// footage that happens to be.
+const NAV_MOVE_EPS = 1.5;  // scroll px in one frame that counts as "scrolling"
+const NAV_STILL_MS = 260;  // how long it must be still before the nav returns
+
 function updateNav(scrollY, p) {
   const delta = scrollY - lastScrollY;
+  const now = performance.now();
   const navHasFocus = nav.contains(document.activeElement);
-  // The threshold is in SCROLL px, but input is amplified (5.1x on touch), so a
-  // flat 24 meant under 5px of finger travel hid the nav. Scale it to the
-  // viewport so it takes a deliberate gesture on any device.
-  const hideAfter = Math.max(64, window.innerHeight * 0.12);
-  if (performance.now() < navHoldUntil || scrollY < 40 || pointerNearTop || navHasFocus) {
-    hideAccum = 0;
+  if (Math.abs(delta) > NAV_MOVE_EPS) lastMoveAt = now;
+  const still = now - lastMoveAt > NAV_STILL_MS;
+
+  if (now < navHoldUntil || scrollY < 40 || pointerNearTop || navHasFocus || still) {
     nav.classList.remove('nav--hidden');
-  } else if (delta < 0) {
-    hideAccum = 0;
-    nav.classList.remove('nav--hidden');
-  } else if (delta > 0 && p > 0.02) {
-    hideAccum += delta;
-    if (hideAccum > hideAfter) nav.classList.add('nav--hidden');
+  } else {
+    nav.classList.add('nav--hidden');
   }
   lastScrollY = scrollY;
 }
@@ -1519,7 +1520,6 @@ function jumpToZone(n) {
   for (let k = -2; k <= 6; k++) requestFrame(destFrame + k, true);
   // you just used the nav — don't let the jump's own scrolling hide it
   navHoldUntil = performance.now() + 1400;
-  hideAccum = 0;
   nav.classList.remove('nav--hidden');
 }
 document.querySelectorAll('[data-zone-jump]').forEach(el => {
@@ -1657,7 +1657,7 @@ function checkLoopBack(p) {
       cur = 0;
       lastWrittenFrame = -1;
       lastScrollY = 0;
-      hideAccum = 0;
+      lastMoveAt = 0;   // treat the reset as stillness, not a fling
       loopVeil.classList.remove('is-on');
       setTimeout(() => { looping = false; }, 450); // re-arm after the fade back
     }, 240);
