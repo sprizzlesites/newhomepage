@@ -12,8 +12,11 @@
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <!-- Sprizzle! display face (bubble-graffiti). Linked before the inline styles so
      the rules below win on any property they both set. -->
+<!-- No rel=preload here on purpose: this page races 898 background frames off the
+     wire at boot, and a preload would tell the browser the font outranks them.
+     It isn't needed for first paint (the cards it styles are several seconds of
+     scrolling away), and measurement showed the hint bought nothing anyway. -->
 <link rel="stylesheet" href="assets/sprizzle-font/sprizzle.css">
-<link rel="preload" as="font" type="font/woff2" href="assets/sprizzle-font/fonts/SprizzleColor-Regular.woff2" crossorigin>
 <style>
 /* --- tokens --- */
 :root{
