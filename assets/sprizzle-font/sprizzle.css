@@ -1,0 +1,117 @@
+/* ==========================================================================
+   Sprizzle! v3 — bubble-graffiti display pack
+   Link this file. No build step, no CDN, no JavaScript required.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Sprizzle";
+  src: url("fonts/Sprizzle-Regular.woff2") format("woff2"),
+       url("fonts/Sprizzle-Regular.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
+/* The cyan edge as filled shapes rather than a stroke — that is what lets the
+   drips be thinner than the edge itself. Same metrics as Sprizzle, so the two
+   stack pixel-perfectly. */
+@font-face {
+  font-family: "Sprizzle Edge";
+  src: url("fonts/Sprizzle-Edge.woff2") format("woff2"),
+       url("fonts/Sprizzle-Edge.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
+@font-face {
+  font-family: "Sprizzle Color";
+  src: url("fonts/SprizzleColor-Regular.woff2") format("woff2"),
+       url("fonts/SprizzleColor-Regular.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
+:root {
+  --sprizzle-fill: #fb0055;
+  --sprizzle-fill-top: #ff7ba5;
+  --sprizzle-fill-bottom: #c2003f;
+  --sprizzle-shadow: #2b0048;
+  --sprizzle-edge: #12b0f0;
+  --sprizzle-inner-w: 0.058em;
+  --sprizzle-edge-w: 0.148em;
+  --sprizzle-drop: 0 0.05em 0 rgba(10, 0, 25, 0.85);
+  --sprizzle-stack: "Sprizzle", "Comic Sans MS", system-ui, sans-serif;
+  --sprizzle-feat: "calt" 1;
+}
+
+/* --------------------------------------------------------------------------
+   1. Full look  <h1 class="sprizzle" data-text="Sprizzle!">Sprizzle!</h1>
+   -------------------------------------------------------------------------- */
+.sprizzle {
+  position: relative;
+  display: inline-block;
+  padding: 0;
+  font-family: "Sprizzle Edge", var(--sprizzle-stack);
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--sprizzle-edge);
+  font-feature-settings: var(--sprizzle-feat);
+  filter: drop-shadow(var(--sprizzle-drop));
+  isolation: isolate;
+}
+
+.sprizzle::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  font-family: var(--sprizzle-stack);
+  background-image: linear-gradient(
+    180deg,
+    var(--sprizzle-fill-top) 0%,
+    var(--sprizzle-fill) 46%,
+    var(--sprizzle-fill-bottom) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: var(--sprizzle-inner-w) var(--sprizzle-shadow);
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   2. Single edge — one element, no data-text, no drips.
+   -------------------------------------------------------------------------- */
+.sprizzle-simple {
+  font-family: var(--sprizzle-stack);
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--sprizzle-fill);
+  -webkit-text-stroke: var(--sprizzle-edge-w) var(--sprizzle-edge);
+  paint-order: stroke fill;
+  font-feature-settings: var(--sprizzle-feat);
+  filter: drop-shadow(var(--sprizzle-drop));
+}
+
+/* --------------------------------------------------------------------------
+   3. Baked colour — six layers inside one font file. Fixed palette.
+   -------------------------------------------------------------------------- */
+.sprizzle-baked {
+  display: inline-block;
+  font-family: "Sprizzle Color", var(--sprizzle-stack);
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--sprizzle-fill);
+  font-feature-settings: var(--sprizzle-feat);
+  filter: drop-shadow(var(--sprizzle-drop));
+}
+
+/* --------------------------------------------------------------------------
+   Modifiers — stack on any mode above.
+   -------------------------------------------------------------------------- */
+.sprizzle-drips  { --sprizzle-feat: "calt" 1, "ss01" 1; }
+.sprizzle-steady { --sprizzle-feat: "calt" 0; }
+.sprizzle-drips.sprizzle-steady { --sprizzle-feat: "calt" 0, "ss01" 1; }
+
+.sprizzle-tilt {
+  display: inline-block;
+  transform: rotate(-2.5deg);
+}

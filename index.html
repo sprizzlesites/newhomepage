@@ -10,6 +10,10 @@
 <meta property="og:description" content="An independent studio for software, sound, and dimension — one small practice.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<!-- Sprizzle! display face (bubble-graffiti). Linked before the inline styles so
+     the rules below win on any property they both set. -->
+<link rel="stylesheet" href="assets/sprizzle-font/sprizzle.css">
+<link rel="preload" as="font" type="font/woff2" href="assets/sprizzle-font/fonts/SprizzleColor-Regular.woff2" crossorigin>
 <style>
 /* --- tokens --- */
 :root{
@@ -404,15 +408,13 @@ img,video{max-width:100%;display:block;}
   transition:opacity .32s var(--ease),transform .32s var(--ease);
 }
 .zone-title{
-  /* Matches the boot-veil "SPRIZZLE" flash. That word is the same typeface as
-     everything else (--font-sans, no webfonts on this page) — what gives it its
-     look is the treatment: caps, wide .14em tracking, medium weight. Tracking
-     that wide eats horizontal room, so the max size comes down a little to keep
-     the longer titles on one line; caps read larger anyway, so presence holds. */
-  font-size:clamp(1.35rem,2.5vw,1.85rem);
-  font-weight:500;
-  letter-spacing:.14em;
-  text-transform:uppercase;
+  /* Set in the Sprizzle! display face — see the .sprizzle-baked/.sprizzle-drips
+     classes on the h2s. The caps + wide tracking that used to live here were an
+     approximation of the wordmark's look; the real face supersedes them, and its
+     spacing is built into the glyph metrics (the pack ships no kerning table),
+     so tracking stays at normal. 32px on desktop, easing down on narrow screens
+     so the longer titles stay on one line. */
+  font-size:clamp(22px,6.2vw,32px);
   margin-bottom:12px;
   opacity:0;
   transform:translateY(8px);
@@ -754,6 +756,9 @@ textarea:focus-visible{
   .step{transition:opacity .01s linear;transform:none !important;}
   .zone-card,
   .zone-index,.zone-kicker,.zone-title,.zone-copy,.zone-actions{transition:opacity .01s linear !important;transform:none !important;filter:none !important;}
+  /* the title's filter is the display face's static drop shadow, not motion —
+     put it back after the blanket filter:none above */
+  .zone-title{filter:drop-shadow(var(--sprizzle-drop)) !important;}
   .contact-panel,.contact-backdrop{transition:opacity .01s linear;transform:none !important;}
   .btn-primary:hover,.btn-ghost:hover{transform:none;}
 }
@@ -837,7 +842,7 @@ textarea:focus-visible{
       <div class="zone-card-inner">
         <p class="zone-index">01 / 05</p>
         <!-- <p class="zone-kicker">Software development</p> -->
-        <h2 class="zone-title">Sprizzle IDE</h2>
+        <h2 class="zone-title sprizzle-baked sprizzle-drips">Sprizzle IDE</h2>
         <p class="zone-copy">I can make software, and you can too! Try it yourself below. SprizzleIDE baby.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
@@ -851,7 +856,7 @@ textarea:focus-visible{
       <div class="zone-card-inner">
         <p class="zone-index">02 / 05</p>
       <!--  <p class="zone-kicker">Audio production</p> -->
-        <h2 class="zone-title">Audio</h2>
+        <h2 class="zone-title sprizzle-baked sprizzle-drips">Audio</h2>
         <p class="zone-copy">Book me for your next mission, or click below to browse some of the plugins I've designed while exploring the bounds of realtime DSP logic.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
@@ -865,7 +870,7 @@ textarea:focus-visible{
       <div class="zone-card-inner">
         <p class="zone-index">03 / 05</p>
       <!--  <p class="zone-kicker">3D design</p> -->
-        <h2 class="zone-title">ROXY 3D</h2>
+        <h2 class="zone-title sprizzle-baked sprizzle-drips">ROXY 3D</h2>
         <p class="zone-copy">Roxy.JS is my free 3d modeling software, allowing users to export their models as Json notation files that can be ported into any website. And, you guessed it, you can also pay me to make you some 3d models if you click the uglier button.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
@@ -879,7 +884,7 @@ textarea:focus-visible{
       <div class="zone-card-inner">
         <p class="zone-index">04 / 05</p>
         <!-- <p class="zone-kicker">Animation</p> -->
-        <h2 class="zone-title">PeachMint</h2>
+        <h2 class="zone-title sprizzle-baked sprizzle-drips">PeachMint</h2>
         <p class="zone-copy">...and then i take your models and make them MOVE!!! Just dont feed them after midnight. </p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
@@ -893,7 +898,7 @@ textarea:focus-visible{
       <div class="zone-card-inner">
         <p class="zone-index">05 / 05</p>
         <!-- <p class="zone-kicker">CyberSec / security consulting</p> -->
-        <h2 class="zone-title">Cyber</h2>
+        <h2 class="zone-title sprizzle-baked sprizzle-drips">Cyber</h2>
         <p class="zone-copy">Reach out to me and I'll personally protect your McNuggets from the Hamburglar. Just dont feed me after midnight.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
