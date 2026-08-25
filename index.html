@@ -1163,6 +1163,10 @@ let targetScroll = 0;   // where input wants the scroll (set instantly)
 let smoothScroll = 0;   // eased position that actually drives the scrub
 let frames = [];        // Image handles (compressed source) for the active sequence
 let loadedFlags = [];   // per-frame "source loaded" flag
+let srcSet = [];        // per-frame "download already issued" flag
+let netInflight = 0;    // frame downloads currently in flight
+let fillCursor = 0;     // background backfill position
+let firstDrawn = false; // first frame of the active sequence has hit the canvas
 let bitmaps = new Map();     // frame index -> decoded ImageBitmap
 let pending = new Set();     // indices currently decoding
 let seqGen = 0;             // bumped on sequence swap to void stale decodes
@@ -1183,18 +1187,58 @@ function loadSequence(key) {
   canvas.height = meta.h;
   frames = new Array(meta.n);
   loadedFlags = new Array(meta.n).fill(false);
+  srcSet = new Array(meta.n).fill(false);
+  netInflight = 0;
+  fillCursor = 0;
+  firstDrawn = false;
   drawnFrame = -1;
   lastWrittenFrame = -1;
-  let firstDrawn = false;
-  for (let i = 0; i < meta.n; i++) {
-    const img = new Image();
-    img.decoding = 'async';
-    img.onload = () => {
-      loadedFlags[i] = true;
-      if (i === 0 && !firstDrawn) { firstDrawn = true; drawFrame(0); hideBootVeil(); }
-    };
-    img.src = framePath(meta.dir, i);
-    frames[i] = img;
+  requestFrame(0, true);   // boot veil lifts on this one
+}
+
+/* ---------- demand-driven frame downloads ---------- */
+// Previously every frame's src was set up front, so the browser held ~900
+// requests in issue order and nothing could overtake them. Jump to zone 5 and
+// its frames sat behind 700 others: the canvas had nothing in range to draw and
+// kept showing wherever you came from. Frames are fetched on demand instead —
+// nearest-need first — so a jump's destination goes out immediately.
+const NET_MAX = 6;    // concurrent background/window downloads
+const NET_HARD = 14;  // ceiling including urgent (what we're about to draw)
+
+function requestFrame(i, urgent) {
+  if (i < 0 || i >= frames.length || srcSet[i]) return;
+  if (netInflight >= (urgent ? NET_HARD : NET_MAX)) return;
+  const meta = SEQ[activeSource];
+  const gen = seqGen;
+  srcSet[i] = true;
+  netInflight++;
+  const img = new Image();
+  img.decoding = 'async';
+  const settle = () => { if (gen === seqGen) netInflight--; };
+  img.onload = () => {
+    settle();
+    if (gen !== seqGen) return;
+    loadedFlags[i] = true;
+    if (i === 0 && !firstDrawn) { firstDrawn = true; drawFrame(0); hideBootVeil(); }
+  };
+  img.onerror = () => { settle(); if (gen === seqGen) srcSet[i] = false; };
+  img.src = framePath(meta.dir, i);
+  frames[i] = img;
+}
+
+// Priority order: the frame we're about to draw, then the travel window, then a
+// sequential backfill so the whole sequence still ends up cached for later.
+function scheduleLoads(center, dir) {
+  requestFrame(center, true);
+  const d = dir >= 0 ? 1 : -1;
+  for (let k = 1; k <= AHEAD; k++) {
+    requestFrame(center + k * d, false);
+    if (k <= BEHIND) requestFrame(center - k * d, false);
+    if (netInflight >= NET_MAX) return;
+  }
+  while (netInflight < NET_MAX && fillCursor < frames.length) {
+    if (!srcSet[fillCursor]) requestFrame(fillCursor, false);
+    fillCursor++;
   }
 }
 
@@ -1420,13 +1464,22 @@ if (hoverMQ.matches && !reduced()) {
 let lastScrollY = window.scrollY;
 let hideAccum = 0;
 let pointerNearTop = false;
-window.addEventListener('pointermove', e => { pointerNearTop = e.clientY < 80; });
+let navHoldUntil = 0;   // keep the nav up through a jump it triggered itself
+// Mouse only: a touch fires pointermove too, so tapping near the top used to
+// latch pointerNearTop true and the nav could never hide again afterwards.
+window.addEventListener('pointermove', e => {
+  if (e.pointerType === 'mouse') pointerNearTop = e.clientY < 80;
+});
 nav.addEventListener('focusin', () => nav.classList.remove('nav--hidden'));
 
 function updateNav(scrollY, p) {
   const delta = scrollY - lastScrollY;
   const navHasFocus = nav.contains(document.activeElement);
-  if (scrollY < 40 || pointerNearTop || navHasFocus) {
+  // The threshold is in SCROLL px, but input is amplified (5.1x on touch), so a
+  // flat 24 meant under 5px of finger travel hid the nav. Scale it to the
+  // viewport so it takes a deliberate gesture on any device.
+  const hideAfter = Math.max(64, window.innerHeight * 0.12);
+  if (performance.now() < navHoldUntil || scrollY < 40 || pointerNearTop || navHasFocus) {
     hideAccum = 0;
     nav.classList.remove('nav--hidden');
   } else if (delta < 0) {
@@ -1434,7 +1487,7 @@ function updateNav(scrollY, p) {
     nav.classList.remove('nav--hidden');
   } else if (delta > 0 && p > 0.02) {
     hideAccum += delta;
-    if (hideAccum > 24) nav.classList.add('nav--hidden');
+    if (hideAccum > hideAfter) nav.classList.add('nav--hidden');
   }
   lastScrollY = scrollY;
 }
@@ -1455,8 +1508,19 @@ function jumpToZone(n) {
   const [a, b] = ZONE_DWELL[n];
   // a direct pick can span many sections, so glide (fast) rather than snap at 1x
   cancelSnap();
-  targetScroll = clampScroll(((a + b) / 2) * maxScroll);
+  const destP = (a + b) / 2;
+  targetScroll = clampScroll(destP * maxScroll);
   if (reduced()) smoothScroll = targetScroll;
+  // Start the destination downloading now, in parallel with the glide, rather
+  // than when we arrive — the glide sweeps hundreds of frames in about a second,
+  // far faster than they can be fetched, so without this the landing frame is
+  // still missing on arrival and the canvas shows where we came from.
+  const destFrame = Math.round(timeFor(destP, activeSource) * SRC_FPS);
+  for (let k = -2; k <= 6; k++) requestFrame(destFrame + k, true);
+  // you just used the nav — don't let the jump's own scrolling hide it
+  navHoldUntil = performance.now() + 1400;
+  hideAccum = 0;
+  nav.classList.remove('nav--hidden');
 }
 document.querySelectorAll('[data-zone-jump]').forEach(el => {
   el.addEventListener('click', () => jumpToZone(Number(el.dataset.zoneJump)));
@@ -1654,7 +1718,8 @@ function tick(ts) {
   // frame — a pre-decoded bitmap, so the draw itself never stalls on a decode.
   const frame = Math.min(SEQ[activeSource].n - 1, Math.max(0, Math.round(cur * SRC_FPS)));
   const dir = frame >= lastWrittenFrame ? 1 : -1; // travel direction for prefetch
-  prefetch(frame, dir);
+  scheduleLoads(frame, dir);   // downloads, nearest-need first
+  prefetch(frame, dir);        // off-thread decodes for what has arrived
   // Repaint when the playhead moves, and also whenever the canvas is still
   // showing a fallback neighbour rather than the frame we actually want. Without
   // the second test a frame that finishes decoding while the finger is holding
