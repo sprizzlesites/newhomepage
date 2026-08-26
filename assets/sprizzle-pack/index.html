@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sprizzle! — font pack specimen</title>
+<link rel="stylesheet" href="sprizzle.css">
+<style>
+  :root{
+    color-scheme:dark;
+    --ink:#12012a;--raised:#1e0640;--line:#33105c;--paper:#f7f0ff;--muted:#a98fc4;
+    --pink:#f20361;--cyan:#27a7e6;
+    --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--ui);line-height:1.6;overflow-x:hidden}
+  .wrap{width:min(980px,92vw);margin-inline:auto}
+  section{padding-block:clamp(36px,7vw,70px);border-top:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin:0 0 .9rem}
+  h2{font-size:clamp(1.15rem,3vw,1.5rem);margin:0 0 .4rem;font-weight:650}
+  p{color:var(--muted);margin:0 0 1rem;max-width:64ch}
+  code{font-family:var(--mono);font-size:.86em;color:var(--cyan)}
+  a{color:var(--cyan)}
+
+  .hero{padding-block:clamp(38px,8vw,84px);text-align:center;border-top:0}
+  .hero .mark{font-size:clamp(2.8rem,13vw,8rem)}
+  .hero .sub{color:var(--muted);font-family:var(--mono);font-size:.76rem;letter-spacing:.14em;text-transform:uppercase;margin-top:.6rem}
+
+  .tester{background:var(--raised);border:1px solid var(--line);border-radius:18px;padding:clamp(16px,3vw,26px)}
+  .stage{min-height:clamp(110px,22vw,200px);display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;padding:.3em .1em}
+  #stageText{font-size:78px;word-break:break-word}
+  .controls{display:grid;gap:14px;margin-top:16px}
+  label span{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
+  input[type=text]{width:100%;padding:.7rem .9rem;border-radius:11px;border:1px solid var(--line);background:var(--ink);color:var(--paper);font:inherit}
+  input[type=range]{width:100%;accent-color:var(--pink)}
+  .modes{display:flex;flex-wrap:wrap;gap:8px}
+  .modes button{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:.5rem .8rem;border-radius:999px;cursor:pointer;background:transparent;color:var(--muted);border:1px solid var(--line)}
+  .modes button[aria-pressed=true]{background:var(--pink);border-color:var(--pink);color:#fff}
+  :focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+
+  .set{margin-bottom:24px}
+  .set h3{font-family:var(--mono);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:400;margin:0 0 .7rem}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:6px}
+  .cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--raised);border-radius:11px;font-size:30px}
+
+  .snippet{position:relative;margin:0 0 24px}
+  .snippet pre{margin:0;padding:16px 62px 16px 16px;overflow-x:auto;background:var(--raised);border:1px solid var(--line);border-radius:14px}
+  .snippet pre code{color:var(--paper);font-size:.8rem;line-height:1.7;white-space:pre}
+  .snippet .copy{position:absolute;top:10px;right:10px;font-family:var(--mono);font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;padding:.35rem .6rem;border-radius:8px;cursor:pointer;background:var(--ink);color:var(--muted);border:1px solid var(--line)}
+  .snippet .copy:hover{color:var(--cyan);border-color:var(--cyan)}
+  .demo-line{display:block;width:fit-content;margin:0 0 12px;font-size:clamp(1.8rem,6vw,3rem)}
+
+  table{border-collapse:collapse;width:100%;font-size:.86rem;margin-bottom:1.2rem}
+  th,td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);color:var(--muted)}
+  th{color:var(--paper);font-weight:600}
+  td code{white-space:nowrap}
+  .swatch{display:inline-block;width:.85em;height:.85em;border-radius:3px;vertical-align:-.08em;margin-right:.4em;border:1px solid rgba(255,255,255,.2)}
+  footer{padding-block:32px;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="mark sprizzle">Sprizzle!</div>
+    <p class="sub">92 glyphs · bounce built into the font · A–Z · a–z · 0–9 · punctuation</p>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Try it</p>
+    <h2>Type your own words</h2>
+    <p>Every glyph is vector now, so it stays crisp at any size — including the drips and
+    splatter that were baked into the artwork. Letters tilt and ride the baseline on their
+    own; hit <b>No bounce</b> to see the difference.</p>
+    <div class="tester">
+      <div class="stage"><div id="stageText" class="sprizzle">Sprizzle!</div></div>
+      <div class="controls">
+        <label><span>Text</span><input id="txt" type="text" value="Sprizzle!" autocomplete="off"></label>
+        <label><span>Size — <b id="sizeOut">78</b> px</span><input id="size" type="range" min="24" max="200" value="78"></label>
+        <div class="modes" role="group" aria-label="Options">
+          <button type="button" id="steadyBtn" aria-pressed="false">No bounce</button>
+          <button type="button" id="tiltBtn" aria-pressed="false">Tilt</button>
+          <button type="button" id="soloBtn" aria-pressed="false">Solid fallback</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Character set</p>
+    <h2>Everything on the sheet</h2>
+    <div id="charset"></div>
+    <noscript><p>Enable JavaScript to see the character grid.</p></noscript>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Install</p>
+    <h2>Two lines</h2>
+    <p>The stylesheet points at <code>fonts/</code> with relative paths, so keep the folder
+    together. GitHub Pages serves <code>.woff2</code> correctly with no configuration.</p>
+    <div class="snippet">
+      <button class="copy" type="button">Copy</button>
+      <pre><code>&lt;link rel="stylesheet" href="sprizzle-pack/sprizzle.css"&gt;
+
+&lt;h1 class="sprizzle" data-text="Sprizzle!"&gt;Sprizzle!&lt;/h1&gt;</code></pre>
+    </div>
+    <p>Three fonts stack to make the wordmark — cyan edge underneath, dark contour, pink
+    body on top. The upper two are drawn by pseudo-elements, which is why the text is
+    mirrored into <code>data-text</code>. One line fills that in for you:</p>
+    <div class="snippet">
+      <button class="copy" type="button">Copy</button>
+      <pre><code>&lt;script&gt;
+  document.querySelectorAll(".sprizzle").forEach(function (el) {
+    el.dataset.text = el.textContent;
+  });
+&lt;/script&gt;</code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Repaint</p>
+    <h2>Change the colours</h2>
+    <p>Defaults are sampled from the artwork. Override on <code>:root</code> or on one element.</p>
+    <table>
+      <tr><th>Property</th><th>Default</th><th>Layer</th></tr>
+      <tr><td><code>--sprizzle-fill-top</code></td><td><span class="swatch" style="background:#ff4f86"></span>#ff4f86</td><td>body, gloss</td></tr>
+      <tr><td><code>--sprizzle-fill</code></td><td><span class="swatch" style="background:#f20361"></span>#f20361</td><td>body, mid</td></tr>
+      <tr><td><code>--sprizzle-fill-bottom</code></td><td><span class="swatch" style="background:#a31a68"></span>#a31a68</td><td>body, shade</td></tr>
+      <tr><td><code>--sprizzle-contour</code></td><td><span class="swatch" style="background:#250658"></span>#250658</td><td>dark contour</td></tr>
+      <tr><td><code>--sprizzle-edge-gloss</code></td><td><span class="swatch" style="background:#e1e9ff"></span>#e1e9ff</td><td>edge, highlight</td></tr>
+      <tr><td><code>--sprizzle-edge</code></td><td><span class="swatch" style="background:#27a7e6"></span>#27a7e6</td><td>edge, mid</td></tr>
+      <tr><td><code>--sprizzle-edge-bottom</code></td><td><span class="swatch" style="background:#3861b0"></span>#3861b0</td><td>edge, shade</td></tr>
+    </table>
+    <div class="demo-line sprizzle sprizzle-steady" data-text="steady">steady</div>
+    <div class="demo-line sprizzle" data-text="Slime" style="--sprizzle-fill-top:#f2ff8a;--sprizzle-fill:#c9f227;--sprizzle-fill-bottom:#8bbd00;--sprizzle-contour:#12300a;--sprizzle-edge-gloss:#e6fff4;--sprizzle-edge-top:#8bffc9;--sprizzle-edge:#2fe08a;--sprizzle-edge-bottom:#0f8f52">Slime</div>
+    <div class="demo-line sprizzle" data-text="Sunset" style="--sprizzle-fill-top:#fff0c4;--sprizzle-fill:#ffb020;--sprizzle-fill-bottom:#c25f00;--sprizzle-contour:#3d0a1f;--sprizzle-edge-gloss:#ffe9ee;--sprizzle-edge-top:#ffa8bd;--sprizzle-edge:#ff5a7a;--sprizzle-edge-bottom:#b8003b">Sunset</div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Also in the pack</p>
+    <h2>Keyed artwork</h2>
+    <p><code>sprizzle-sheet.png</code> is your original sheet with the white keyed out —
+    counters included — and <code>glyphs/</code> holds all 92 characters as separate
+    transparent PNGs, in case you want the original raster somewhere the font can't go.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Artwork and letterforms are yours. The outlines here were traced from
+    <code>sprizzle-sheet.png</code>; <code>build-1-trace.py</code> and
+    <code>build-2-fonts.py</code> regenerate the whole pack from the sheet.
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  function sync(root) {
+    (root || document).querySelectorAll(".sprizzle").forEach(function (el) {
+      el.dataset.text = el.textContent;
+    });
+  }
+  sync();
+
+  var sets = [
+    ["Uppercase", "ABCDEFGHIJKLMNOPQRSTUVWXYZ"],
+    ["Lowercase", "abcdefghijklmnopqrstuvwxyz"],
+    ["Numerals", "1234567890"],
+    ["Punctuation", "!?@#$%^&*()-_=+[]{}\\|;:'\"<>,./~"]
+  ];
+  var host = document.getElementById("charset");
+  sets.forEach(function (set) {
+    var block = document.createElement("div");
+    block.className = "set";
+    var h = document.createElement("h3");
+    h.textContent = set[0];
+    var grid = document.createElement("div");
+    grid.className = "grid";
+    set[1].split("").forEach(function (ch) {
+      var cell = document.createElement("div");
+      cell.className = "cell";
+      var g = document.createElement("span");
+      g.className = "sprizzle";
+      g.textContent = ch;
+      g.dataset.text = ch;
+      cell.appendChild(g);
+      grid.appendChild(cell);
+    });
+    block.appendChild(h);
+    block.appendChild(grid);
+    host.appendChild(block);
+  });
+
+  var stage = document.getElementById("stageText"),
+      txt = document.getElementById("txt"),
+      size = document.getElementById("size"),
+      sizeOut = document.getElementById("sizeOut");
+  var state = { steady: false, tilt: false, solid: false };
+
+  function render() {
+    var c = state.solid ? "sprizzle-solid" : "sprizzle";
+    if (state.steady) c += " sprizzle-steady";
+    if (state.tilt) c += " sprizzle-tilt";
+    stage.className = c;
+    stage.textContent = txt.value || " ";
+    stage.dataset.text = stage.textContent;
+    stage.style.fontSize = size.value + "px";
+    sizeOut.textContent = size.value;
+  }
+
+  txt.addEventListener("input", render);
+  size.addEventListener("input", render);
+  [["steadyBtn", "steady"], ["tiltBtn", "tilt"], ["soloBtn", "solid"]].forEach(function (pair) {
+    var btn = document.getElementById(pair[0]);
+    btn.addEventListener("click", function () {
+      state[pair[1]] = !state[pair[1]];
+      btn.setAttribute("aria-pressed", String(state[pair[1]]));
+      render();
+    });
+  });
+  render();
+
+  document.querySelectorAll(".snippet .copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var code = btn.parentNode.querySelector("code").textContent;
+      navigator.clipboard.writeText(code).then(function () {
+        btn.textContent = "Copied";
+        setTimeout(function () { btn.textContent = "Copy"; }, 1400);
+      }, function () { btn.textContent = "Select it"; });
+    });
+  });
+})();
+</script>
+</body>
+</html>

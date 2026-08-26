@@ -16,7 +16,11 @@
      wire at boot, and a preload would tell the browser the font outranks them.
      It isn't needed for first paint (the cards it styles are several seconds of
      scrolling away), and measurement showed the hint bought nothing anyway. -->
-<link rel="stylesheet" href="assets/sprizzle-font/sprizzle.css">
+<!-- media="print" parks this so its three font files aren't fetched yet; the
+     script flips it to "all" once the frame sequence has a head start. This page
+     races 898 background frames off the wire at boot, and the cards this face
+     styles are ~750px of scrolling away, so nothing visible waits on it. -->
+<link rel="stylesheet" href="assets/sprizzle-pack/sprizzle.css" media="print" id="sprizzleCss">
 <style>
 /* --- tokens --- */
 :root{
@@ -411,14 +415,16 @@ img,video{max-width:100%;display:block;}
   transition:opacity .32s var(--ease),transform .32s var(--ease);
 }
 .zone-title{
-  /* Set in the Sprizzle! display face — see the .sprizzle-baked/.sprizzle-drips
-     classes on the h2s. The caps + wide tracking that used to live here were an
-     approximation of the wordmark's look; the real face supersedes them, and its
-     spacing is built into the glyph metrics (the pack ships no kerning table),
-     so tracking stays at normal. 32px on desktop, easing down on narrow screens
-     so the longer titles stay on one line. */
+  /* Set in the Sprizzle! display face — see the .sprizzle class on the h2s,
+     which stacks three fonts (cyan edge, dark contour, pink body). 32px on
+     desktop, easing down on narrow screens so the longer titles stay on one line. */
   font-size:clamp(22px,6.2vw,32px);
-  margin-bottom:12px;
+  /* .sprizzle pads by --sprizzle-bleed so the ink that overhangs each advance
+     box still gets painted, then cancels that padding with a negative margin.
+     Our margin-bottom would override the shorthand's bottom half and leave the
+     bleed uncancelled there, so re-state both and fold the card's 12px gap in. */
+  margin:calc(-1 * var(--sprizzle-bleed, 0px));
+  margin-bottom:calc(12px - var(--sprizzle-bleed, 0px));
   opacity:0;
   transform:translateY(8px);
   transition:opacity .32s var(--ease),transform .32s var(--ease);
@@ -845,7 +851,7 @@ textarea:focus-visible{
       <div class="zone-card-inner">
         <p class="zone-index">01 / 05</p>
         <!-- <p class="zone-kicker">Software development</p> -->
-        <h2 class="zone-title sprizzle-baked sprizzle-drips">Sprizzle IDE</h2>
+        <h2 class="zone-title sprizzle">Sprizzle IDE</h2>
         <p class="zone-copy">I can make software, and you can too! Try it yourself below. SprizzleIDE baby.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
@@ -859,7 +865,7 @@ textarea:focus-visible{
       <div class="zone-card-inner">
         <p class="zone-index">02 / 05</p>
       <!--  <p class="zone-kicker">Audio production</p> -->
-        <h2 class="zone-title sprizzle-baked sprizzle-drips">Audio</h2>
+        <h2 class="zone-title sprizzle">Audio</h2>
         <p class="zone-copy">Book me for your next mission, or click below to browse some of the plugins I've designed while exploring the bounds of realtime DSP logic.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
@@ -873,7 +879,7 @@ textarea:focus-visible{
       <div class="zone-card-inner">
         <p class="zone-index">03 / 05</p>
       <!--  <p class="zone-kicker">3D design</p> -->
-        <h2 class="zone-title sprizzle-baked sprizzle-drips">ROXY 3D</h2>
+        <h2 class="zone-title sprizzle">ROXY 3D</h2>
         <p class="zone-copy">Roxy.JS is my free 3d modeling software, allowing users to export their models as Json notation files that can be ported into any website. And, you guessed it, you can also pay me to make you some 3d models if you click the uglier button.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
@@ -887,7 +893,7 @@ textarea:focus-visible{
       <div class="zone-card-inner">
         <p class="zone-index">04 / 05</p>
         <!-- <p class="zone-kicker">Animation</p> -->
-        <h2 class="zone-title sprizzle-baked sprizzle-drips">PeachMint</h2>
+        <h2 class="zone-title sprizzle">PeachMint</h2>
         <p class="zone-copy">...and then i take your models and make them MOVE!!! Just dont feed them after midnight. </p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
@@ -901,7 +907,7 @@ textarea:focus-visible{
       <div class="zone-card-inner">
         <p class="zone-index">05 / 05</p>
         <!-- <p class="zone-kicker">CyberSec / security consulting</p> -->
-        <h2 class="zone-title sprizzle-baked sprizzle-drips">Cyber</h2>
+        <h2 class="zone-title sprizzle">Cyber</h2>
         <p class="zone-copy">Reach out to me and I'll personally protect your McNuggets from the Hamburglar. Just dont feed me after midnight.</p>
         <div class="zone-actions">
           <!-- TODO(spryte): wire real repo URL -->
@@ -1054,6 +1060,26 @@ const contactPreseedEdit = document.getElementById('contactPreseedEdit');
 const step0Body = document.getElementById('step0Body');
 const zoneCards = [1,2,3,4,5].map(n => document.getElementById(`zoneCard${n}`));
 const liquidLensImg = document.getElementById('liquidLensImg');
+
+/* ---------- display face: let the scrub get its frames first ---------- */
+// The stylesheet ships with media="print" so its three woff2 files stay unfetched
+// at boot. Flip it on once the sequence has a head start, or after 2.5s, whichever
+// lands first — the zone cards start at opacity 0 and are a good scroll away, so
+// the swap isn't visible in practice.
+const sprizzleCss = document.getElementById('sprizzleCss');
+let framesLoadedCount = 0;
+function enableSprizzleFont() {
+  if (sprizzleCss && sprizzleCss.media !== 'all') sprizzleCss.media = 'all';
+}
+setTimeout(enableSprizzleFont, 2500);
+
+/* ---------- Sprizzle! wordmark layers ---------- */
+// The face stacks three fonts: the element paints the cyan edge, and the dark
+// contour and pink body are drawn by ::before/::after — which need their own
+// copy of the text. Mirroring it here rather than hand-writing data-text on each
+// heading means editing a title can't leave the layers out of sync. Runs before
+// any card is visible (they start at opacity 0), so there's nothing to flash.
+document.querySelectorAll('.sprizzle').forEach(el => { el.dataset.text = el.textContent.trim(); });
 
 const reducedMotionMQ = matchMedia('(prefers-reduced-motion: reduce)');
 const hoverMQ = matchMedia('(hover: hover)');
@@ -1219,6 +1245,7 @@ function requestFrame(i, urgent) {
     settle();
     if (gen !== seqGen) return;
     loadedFlags[i] = true;
+    if (++framesLoadedCount >= 60) enableSprizzleFont();  // scrub has a cushion — let the font in
     if (i === 0 && !firstDrawn) { firstDrawn = true; drawFrame(0); hideBootVeil(); }
   };
   img.onerror = () => { settle(); if (gen === seqGen) srcSet[i] = false; };

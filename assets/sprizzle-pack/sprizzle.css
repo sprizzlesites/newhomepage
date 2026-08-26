@@ -1,0 +1,121 @@
+/* ==========================================================================
+   Sprizzle! font pack — traced from the original specimen artwork
+   Three filled fonts stacked. No build step, no CDN, no JS required.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Sprizzle";
+  src: url("fonts/Sprizzle-Regular.woff2") format("woff2"),
+       url("fonts/Sprizzle-Regular.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Sprizzle Contour";
+  src: url("fonts/SprizzleContour-Regular.woff2") format("woff2"),
+       url("fonts/SprizzleContour-Regular.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Sprizzle Edge";
+  src: url("fonts/SprizzleEdge-Regular.woff2") format("woff2"),
+       url("fonts/SprizzleEdge-Regular.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
+/* Colours sampled from the artwork itself. */
+:root {
+  --sprizzle-fill-top: #ff4f86;
+  --sprizzle-fill: #f20361;
+  --sprizzle-fill-bottom: #a31a68;
+  --sprizzle-contour: #250658;
+  --sprizzle-edge-gloss: #e1e9ff;
+  --sprizzle-edge-top: #7fd0f5;
+  --sprizzle-edge: #27a7e6;
+  --sprizzle-edge-bottom: #3861b0;
+  --sprizzle-drop: 0 0.03em 0.01em rgba(20, 0, 50, 0.4);
+  /* Glyph ink overhangs its advance box by up to .18em so the edges merge
+     between letters. The gradient layers are painted with background-clip:text,
+     and a background only covers the element's own box — so without this bleed
+     the first and last letter of a run get sliced flat. Padding grows the paint
+     area; the negative margin cancels the layout shift. */
+  --sprizzle-bleed: 0.22em;
+  --sprizzle-stack: "Comic Sans MS", system-ui, sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   The wordmark. Mirror the text into data-text so the upper two layers have
+   something to draw — see the README for the one-line script.
+      <h1 class="sprizzle" data-text="Sprizzle!">Sprizzle!</h1>
+   -------------------------------------------------------------------------- */
+.sprizzle {
+  position: relative;
+  display: inline-block;
+  padding: var(--sprizzle-bleed);
+  margin: calc(-1 * var(--sprizzle-bleed));
+  line-height: 1.5;
+  font-family: "Sprizzle Edge", var(--sprizzle-stack);
+  font-weight: 400;
+  background-image: linear-gradient(
+    180deg,
+    var(--sprizzle-edge-gloss) 0%,
+    var(--sprizzle-edge-top) 9%,
+    var(--sprizzle-edge) 42%,
+    var(--sprizzle-edge-bottom) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(var(--sprizzle-drop));
+  isolation: isolate;
+}
+
+.sprizzle::before,
+.sprizzle::after {
+  content: attr(data-text);
+  position: absolute;
+  /* offset by the bleed so the layers still register with the base text,
+     which starts after the padding */
+  top: var(--sprizzle-bleed);
+  left: var(--sprizzle-bleed);
+  /* the +1px matters: at a plain 100% sub-pixel rounding makes these layers
+     wrap a word earlier than the base layer. max-content would also fix that
+     but then they refuse to wrap when the base layer legitimately does. */
+  width: calc(100% - 2 * var(--sprizzle-bleed) + 1px);
+  pointer-events: none;
+}
+
+.sprizzle::before {
+  font-family: "Sprizzle Contour", var(--sprizzle-stack);
+  color: var(--sprizzle-contour);
+}
+
+.sprizzle::after {
+  font-family: "Sprizzle", var(--sprizzle-stack);
+  background-image: linear-gradient(
+    180deg,
+    var(--sprizzle-fill-top) 0%,
+    var(--sprizzle-fill) 42%,
+    var(--sprizzle-fill-bottom) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* One-element fallback: body + contour, no cyan, no data-text. */
+.sprizzle-solid {
+  font-family: "Sprizzle", var(--sprizzle-stack);
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--sprizzle-fill);
+  -webkit-text-stroke: 0.1em var(--sprizzle-contour);
+  paint-order: stroke fill;
+  filter: drop-shadow(var(--sprizzle-drop));
+}
+
+/* Letters tilt and ride the baseline by default, via the font's `calt`
+   feature — five cut variants cycled as you type. Turn it off for tidy rows.
+   font-feature-settings is inherited, so this reaches all three layers. */
+.sprizzle-steady { font-feature-settings: "calt" 0; }
+
+.sprizzle-tilt { display: inline-block; transform: rotate(-2.5deg); }
